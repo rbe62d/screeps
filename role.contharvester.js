@@ -8,7 +8,7 @@ module.exports = {
         });
 
         let container = null;
-        if (containers.length > 0) {container = containers[0];}
+        if (containers.length > 0) {container = creep.pos.findClosestByPath(containers);}
 
         if(creep.carry.energy < creep.carryCapacity) {
             if (container == null) {
@@ -33,6 +33,7 @@ module.exports = {
                 }
             } else if (container.store[RESOURCE_ENERGY] < container.storeCapacity) {
                 creep.drop(RESOURCE_ENERGY)
+                creep.harvest(source);
             }
         }
     }
