@@ -6,8 +6,7 @@ module.exports = {
         if(creep.memory.working && creep.carry.energy == 0) {
             creep.memory.working = false;
             creep.say('🔄 harvest');
-        }
-        if(!creep.memory.working && creep.carry.energy == creep.carryCapacity) {
+        } else if(!creep.memory.working && creep.carry.energy == creep.carryCapacity) {
             creep.memory.working = true;
             creep.say('⚡ upgrade');
         }

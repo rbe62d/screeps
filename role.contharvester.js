@@ -14,7 +14,7 @@ module.exports = {
             if (container == null) {
                 if(creep.harvest(source) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
-                } else {
+                } else if (creep.pos.findInRange(FIND_SOURCES, 1).length != 0) {
                     creep.room.createConstructionSite(creep.pos, STRUCTURE_CONTAINER)
                 }
             } else {
@@ -29,11 +29,17 @@ module.exports = {
             let targets = creep.pos.findInRange(FIND_CONSTRUCTION_SITES, 0);
             if(targets.length) {
                 if(creep.build(targets[0]) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#ffffff'}});
+                    creep.moveTo(targets[0], {ignoreCreeps: true, visualizePathStyle: {stroke: '#ffffff'}});
                 }
-            } else if (container.store[RESOURCE_ENERGY] < container.storeCapacity) {
-                creep.drop(RESOURCE_ENERGY)
-                creep.harvest(source);
+            } else if (container != null && container.hits < container.hitsMax) {
+                if(creep.repair(container) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(container, {ignoreCreeps: true, visualizePathStyle: {stroke: '#ffffff'}});
+                }
+            } else { 
+                if (_.sum(container.store) < container.storeCapacity) {
+                    creep.drop(RESOURCE_ENERGY)
+                    creep.harvest(source);
+                }
             }
         }
     }

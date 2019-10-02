@@ -22,7 +22,7 @@ module.exports = {
 
                 let tombs = creep.room.find(FIND_TOMBSTONES, {
                     filter: (r) => {
-                        return r.resourceType == RESOURCE_ENERGY;
+                        return r.store[RESOURCE_ENERGY] > 0;
                     }
                 })
 
@@ -35,7 +35,7 @@ module.exports = {
                 } else if (tombs.length > 0) {
                     let closest = creep.pos.findClosestByPath(tombs);
 
-                    if(creep.pickup(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    if(creep.withdraw(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                         creep.moveTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
                     }
                 } else {
@@ -50,7 +50,7 @@ module.exports = {
                         //let closest;
                         let set = [];
                         for (let thing of containers) {
-                            if (thing.store[RESOURCE_ENERGY] > max) {
+                            if (thing.store[RESOURCE_ENERGY] > max + 50 || _.sum(thing.store) == thing.storeCapacity) {
                                 max = thing.store[RESOURCE_ENERGY];
                                 // closest = thing;
                             }

@@ -13,35 +13,28 @@ module.exports.loop = function () {
 
     let t = Game.time
     if (t%1500 == 0) {
-        Game.rooms.W5N3.memory.remotebuild = "w4n3"
+        // Game.rooms.W5N3.memory.remotebuild = "w5n1"
+        // Game.rooms.W7N2.memory.remotebuild = "w6n1"
         // console.log("remote w7n3")
     } else if ((t+500)%1500  == 0) {
+        // Game.rooms.W5N3.memory.remotebuild = "w5n1"
+        // Game.rooms.W7N2.memory.remotebuild = "w6n1"
         // Game.rooms.W8N3.memory.remotebuild = "w8n2"
         // console.log("remote w7n4")
     } else if ((t+1000)%1500  == 0) {
+        // Game.rooms.W5N3.memory.remotebuild = "w5n1"
+        // Game.rooms.W7N2.memory.remotebuild = "w6n1"
         // Game.rooms.W8N3.memory.remotebuild = "w7n4"
         // console.log("remote w7n4")
     }
 
     for (let spawnName in Game.spawns) {
         Game.spawns[spawnName].spawnController();
+        // Game.spawns[spawnName].buildController2();
 
-        if (Game.time%100) {
-            if (Game.spawns[spawnName].room.controller.level == 3) {
-                let temppos = new RoomPosition(Game.spawns[spawnName].pos.x, Game.spawns[spawnName].pos.y+1, Game.spawns[spawnName].room.name)
-        
-                const found = temppos.lookFor(LOOK_STRUCTURES)
-                if (found.length == 0) {
-                    temppos.createConstructionSite(STRUCTURE_TOWER)
-                } 
-            } else if (Game.spawns[spawnName].room.controller.level == 4) {
-                let temppos = new RoomPosition(Game.spawns[spawnName].pos.x, Game.spawns[spawnName].pos.y-1, Game.spawns[spawnName].room.name)
-        
-                const found = temppos.lookFor(LOOK_STRUCTURES)
-                if (found.length == 0) {
-                    temppos.createConstructionSite(STRUCTURE_STORAGE)
-                } 
-            }
+        let name = spawnName.substring(0,6);
+        if (name == 'spawn1') {
+            Game.spawns[spawnName].buildController();
         }
     }
 

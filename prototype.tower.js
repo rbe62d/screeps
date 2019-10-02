@@ -11,7 +11,7 @@ StructureTower.prototype.runRole =
                 this.heal(closestHurt);
             }
 
-            let closestDamagedStructure = this.pos.findClosestByRange(FIND_STRUCTURES, {
+            let closestDamagedStructure = this.pos.findClosestByRange(FIND_MY_STRUCTURES, {
                 filter: (structure) => structure.hits < structure.hitsMax && structure.structureType != STRUCTURE_WALL && structure.structureType != STRUCTURE_RAMPART
             });
             if(closestDamagedStructure != undefined) {

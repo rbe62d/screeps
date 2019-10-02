@@ -7,7 +7,6 @@ module.exports = {
         if (targets.length == 0) {
             creep.runOtherRole('upgrader');
         } else {
-
             if(creep.memory.working && creep.carry.energy == 0) {
                 creep.memory.working = false;
                 creep.say('🔄 harvest');
