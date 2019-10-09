@@ -6,7 +6,12 @@ var roles = {
     builder: require('role.builder'),
     claimer: require('role.claimer'),
     remotebuilder: require('role.remotebuilder'),
-    remoteupgrader: require('role.remoteupgrader')
+    remoteupgrader: require('role.remoteupgrader'),
+    eman: require('role.eman'),
+    scout: require('role.scout'),
+    remotedestroyer: require('role.remotedestroyer'),
+    minharvester: require('role.minharvester'),
+    minferry: require('role.minferry')
 }
 
 Creep.prototype.runRole =
@@ -57,14 +62,6 @@ Creep.prototype.getEnergy =
 
 Creep.prototype.depositEnergy =
     function () {
-        // let targets = this.room.find(FIND_MY_STRUCTURES, {
-        //         filter: (structure) => {
-        //             return (structure.structureType == STRUCTURE_EXTENSION ||
-        //                 structure.structureType == STRUCTURE_SPAWN ||
-        //                 structure.structureType == STRUCTURE_TOWER) && structure.energy < structure.energyCapacity;
-        //         }
-        //     });
-
         let targets = this.room.find(FIND_MY_STRUCTURES, {
                 filter: (structure) => {
                     // return (structure.structureType == STRUCTURE_EXTENSION ||
@@ -87,6 +84,23 @@ Creep.prototype.depositEnergy =
                 if (this.transfer(store, RESOURCE_ENERGY) != OK) {
                     this.moveTo(store, {visualizePathStyle: {stroke: '#ffffff'}});
                 }
+            }
+        }
+    };
+
+Creep.prototype.fillExtensions =
+    function () {
+        let targets = this.room.find(FIND_MY_STRUCTURES, {
+                filter: (s) => {
+                    return (s.structureType == STRUCTURE_SPAWN || s.structureType == STRUCTURE_EXTENSION) && s.energy < s.energyCapacity;
+                }
+            });
+
+        if(targets.length > 0) {
+            const closest = this.pos.findClosestByPath(targets);
+
+            if(this.transfer(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                this.moveTo(closest, {visualizePathStyle: {stroke: '#ffffff'}});
             }
         }
     };

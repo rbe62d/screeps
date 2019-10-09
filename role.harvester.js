@@ -4,7 +4,11 @@ module.exports = {
     run: function(creep) {
         // creep.memory.working = 
         if (creep.room.energyAvailable == creep.room.energyCapacityAvailable) {
-            creep.runOtherRole("builder");
+            if (creep.room.find(FIND_CONSTRUCTION_SITES).length > 0) {
+                creep.runOtherRole('builder');
+            } else {
+                creep.runOtherRole('upgrader');
+            }
         } else {
             if(creep.memory.working && creep.carry.energy == 0) {
                 creep.memory.working = false;

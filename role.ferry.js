@@ -9,11 +9,12 @@ module.exports = {
         }
 
         if(creep.memory.working) {
-            if (2 * creep.room.energyAvailable < creep.room.energyCapacityAvailable && creep.room.storage != undefined && creep.room.storage.store[RESOURCE_ENERGY] > 5000) {
-                if(creep.withdraw(creep.room.storage, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                        creep.moveTo(creep.room.storage, {visualizePathStyle: {stroke: '#ffaa00'}});
-                    }
-            } else {
+            // if (2 * creep.room.energyAvailable < creep.room.energyCapacityAvailable && creep.room.storage != undefined && creep.room.storage.store[RESOURCE_ENERGY] > 5000) {
+            //     if(creep.withdraw(creep.room.storage, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+            //             creep.moveTo(creep.room.storage, {visualizePathStyle: {stroke: '#ffaa00'}});
+            //         }
+            // } else 
+            {
                 let dropped = creep.room.find(FIND_DROPPED_RESOURCES, {
                     filter: (r) => {
                         return r.resourceType == RESOURCE_ENERGY;
@@ -50,7 +51,7 @@ module.exports = {
                         //let closest;
                         let set = [];
                         for (let thing of containers) {
-                            if (thing.store[RESOURCE_ENERGY] > max + 50 || _.sum(thing.store) == thing.storeCapacity) {
+                            if (thing.store[RESOURCE_ENERGY] > max + 100 || _.sum(thing.store) == thing.storeCapacity) {
                                 max = thing.store[RESOURCE_ENERGY];
                                 // closest = thing;
                             }
@@ -71,7 +72,18 @@ module.exports = {
             }
         }
         else {
-            creep.depositEnergy();
+            let store = creep.room.storage;
+            if(store != undefined) {
+                if (store.store[RESOURCE_ENERGY] < 0.5 * store.storeCapacity) {
+                    if (creep.transfer(store, RESOURCE_ENERGY) != OK) {
+                        creep.moveTo(store, {visualizePathStyle: {stroke: '#ffffff'}});
+                    }
+                }
+            } else {
+                creep.depositEnergy();
+            }
+
+            // creep.depositEnergy();
         }
     }
 };

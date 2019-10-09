@@ -1,13 +1,17 @@
 require('prototype.creep');
 require('prototype.tower');
-require('prototype.spawn')
+require('prototype.spawn');
+require('prototype.observer');
+require('prototype.room');
 
 module.exports.loop = function () {
+    if (Memory.roomData == undefined) {
+        Memory.roomData = {};
+    }
 
     for(var name in Memory.creeps) {
         if(!Game.creeps[name]) {
             delete Memory.creeps[name];
-            console.log('Clearing non-existing creep memory:', name);
         }
     }
 
@@ -30,12 +34,26 @@ module.exports.loop = function () {
 
     for (let spawnName in Game.spawns) {
         Game.spawns[spawnName].spawnController();
-        // Game.spawns[spawnName].buildController2();
+        let roomName = Game.spawns[spawnName].room.name;
+
+        if (Game.rooms[roomName].memory.nearby == undefined) {
+            Game.rooms[roomName].memory.nearby = [];
+        }
 
         let name = spawnName.substring(0,6);
         if (name == 'spawn1') {
             Game.spawns[spawnName].buildController();
+
+            if (Game.rooms[roomName].memory.nearby.indexOf(roomName) < 0 || Memory.roomData[roomName] == undefined) {
+                Game.rooms[roomName].gatherIntel(roomName);
+            }
+
+            if (Game.time % 10 == 0) {
+                // delete Game.rooms[roomName].memory.nearby
+                // delete Memory.roomData
+            }
         }
+
     }
 
     var towers = _.filter(Game.structures, s => s.structureType == STRUCTURE_TOWER);
@@ -43,6 +61,10 @@ module.exports.loop = function () {
         tower.runRole();
     }
 
+    var observers = _.filter(Game.structures, s => s.structureType == STRUCTURE_OBSERVER);
+    for (let observer of observers) {
+        observer.runRole();
+    }
 
     for(var name in Game.creeps) {
         Game.creeps[name].runRole();

@@ -7,7 +7,8 @@ module.exports = {
             creep.moveTo(new RoomPosition(25, 25, creep.memory.targetRoom));
         } else {
         	creep.moveTo(new RoomPosition(25, 25, creep.memory.targetRoom));
-            creep.memory.role = 'upgrader'
+            creep.memory.role = 'upgrader';
+            creep.memory.home = creep.room.name;
         }
     }
 };

@@ -13,7 +13,7 @@ module.exports = {
         if(creep.carry.energy < creep.carryCapacity) {
             if (container == null) {
                 if(creep.harvest(source) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    creep.moveTo(source, {ignoreCreeps: true,visualizePathStyle: {stroke: '#ffaa00'}});
                 } else if (creep.pos.findInRange(FIND_SOURCES, 1).length != 0) {
                     creep.room.createConstructionSite(creep.pos, STRUCTURE_CONTAINER)
                 }
