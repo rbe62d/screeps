@@ -11,7 +11,7 @@ StructureSpawn.prototype.spawnController =
         let builders = _.filter(creepsList, c => c.memory.role == 'builder');
         let emans = _.filter(creepsList, c => c.memory.role == 'eman');
         let scouts = _.filter(creepsList, c => c.memory.role == 'scout');
-        let remotedestroys = _.filter(creepsList, c => c.memory.role == 'remotedestroy');
+        let remotedestroys = _.filter(creepsList, c => c.memory.role == 'remotedestroyer');
         let minferrys = _.filter(creepsList, c => c.memory.role == 'minferry');
         let minharvesters = _.filter(creepsList, c => c.memory.role == 'minharvester');
 
@@ -26,11 +26,17 @@ StructureSpawn.prototype.spawnController =
             home: room.name
         }
 
+        if (room.memory.expand == undefined) {
+            room.memory.expand = '';
+        }
+        if (room.memory.remotedestroy == undefined) {
+            room.memory.remotedestroy = '';
+        }
 
         if (room.controller.level >= 3 && remotedestroys.length < 1 && Game.time % 1500 == 0) {
             let abandonedrooms = [];
-            for (let ruum in Memory.roomData) {
-                if (room.memory.nearby.indexOf(ruum) >= 0 && Game.map.getRoomLinearDistance(room.name, ruum) <= 2 && Memory.roomData[ruum].type == 'abandoned') {
+            for (let ruum in Memory.rooms) {
+                if (room.memory.nearby.indexOf(ruum) >= 0 && Game.map.getRoomLinearDistance(room.name, ruum) <= 2 && Memory.rooms[ruum].type == 'abandoned') {
                     abandonedrooms.push(ruum)
                 }
             }
@@ -63,23 +69,32 @@ StructureSpawn.prototype.spawnController =
             name = 'ferry' + Game.time;
             mem['role'] = 'ferry';
             body = this.genFerry();
-        } else if(ferrys.length < contharvesters.length && room.energyCapacityAvailable < 1200) {
+        } else if(ferrys.length < contharvesters.length && room.energyCapacityAvailable < 1000) {
             name = 'ferry' + Game.time;
             mem['role'] = 'ferry';
             body = this.genFerry();
         } else if(room.energyCapacityAvailable >= 700 && contharvesters.length < sources.length) {
             name = 'contharvester' + Game.time;
             mem['role'] = 'contharvester';
-            if (room.energyAvailable > 600) {
+            
+            if (room.energyAvailable > 800) {
+                body = [WORK,WORK,WORK,WORK,WORK,WORK,CARRY,MOVE,MOVE,MOVE];
+            } else if (room.energyAvailable > 700) {
+                body = [WORK,WORK,WORK,WORK,WORK,CARRY,MOVE,MOVE,MOVE];
+            } else if (room.energyAvailable > 600) {
                 body = [WORK,WORK,WORK,WORK,WORK,CARRY,MOVE];
+            }
 
-                for (let source of sources) {
-                    if (!_.some(creepsList, c => c.memory.role == 'contharvester' && c.memory.sourceID == source.id)) {
-                        mem['sourceID'] = source.id;
-                    }
+            for (let source of sources) {
+                if (!_.some(creepsList, c => c.memory.role == 'contharvester' && c.memory.sourceID == source.id)) {
+                    mem['sourceID'] = source.id;
                 }
             }
         } else if(room.controller.level == 8 && upgraders.length < 1) {
+            name = 'upgrader' + Game.time;
+            mem['role'] = 'upgrader';
+            body = this.genWorker();
+        } else if((room.controller.level < 4 || room.storage == undefined) && upgraders.length < 6) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
@@ -100,42 +115,64 @@ StructureSpawn.prototype.spawnController =
             name = 'minferry' + Game.time;
             mem['role'] = 'minferry';
             body = this.genFerry();
-        } else if (scouts.length < 1 && room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_OBSERVER}).length == 0) {
+        } else if (scouts.length < 2 && room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_OBSERVER}).length == 0) {
             name = 'scout' + Game.time;
             mem['role'] = 'scout';
             body = [MOVE];
-        } else if(room.memory.claim != "") {
-            name = 'claimer' + Game.time;
-            mem['role'] = 'claimer';
-            mem['targetRoom'] = room.memory.claim
-            if (room.energyAvailable > 650) {
-                body = [CLAIM, MOVE];
+        } else if (room.memory.expand != undefined && room.memory.expand != "") {
+            let targ = room.memory.expand;
+
+            let claimers = _.filter(creepsList, c => c.memory.role == 'claimer' && c.memory.targetRoom == targ);
+            let settlers = _.filter(creepsList, c => c.memory.role == 'settler' && c.memory.targetRoom == targ);
+
+            if (claimers.length < 1 && Memory.rooms[targ].type != 'base') {
+                name = 'claimer' + Game.time;
+                mem['role'] = 'claimer';
+                mem['targetRoom'] = targ
+                if (room.energyAvailable > 650) {
+                    body = [CLAIM, MOVE];
+                }
+            } else if (settlers.length < 3) {
+                name = 'settler' + Game.time;
+                mem['role'] = 'settler';
+                mem['targetRoom'] = targ
+                // mem['home'] = mem[''];
+                body = this.genWorker();
             }
-            room.memory.claim = "";
-        } else if(room.memory.remotebuild != "") {
-            name = 'remotebuilder' + Game.time;
-            mem['role'] = 'remotebuilder';
-            mem['targetRoom'] = room.memory.remotebuild
-            mem['home'] = mem['targetRoom'];
-            body = this.genWorker();
-
-            room.memory.remotebuild = "";
-        } else if(room.memory.remoteupgrade != "") {
-            name = 'remoteupgrader' + Game.time;
-            mem['role'] = 'remoteupgrader';
-            mem['targetRoom'] = room.memory.remoteupgrade
-            mem['home'] = mem['targetRoom'];
-            body = this.genWorker();
-
-            room.memory.remoteupgrade = "";
-        } else if(room.memory.remotedestroy != "") {
+        } else if(room.memory.remotedestroy != undefined && room.memory.remotedestroy != "") {
             name = 'remotedestroyer' + Game.time;
             mem['role'] = 'remotedestroyer';
             mem['targetRoom'] = room.memory.remotedestroy
             body = this.genDestroyer();
 
             room.memory.remotedestroy = "";
-        } 
+        }
+
+        // else if(room.memory.claim != undefined && room.memory.claim != "") {
+            // name = 'claimer' + Game.time;
+            // mem['role'] = 'claimer';
+            // mem['targetRoom'] = room.memory.claim
+            // if (room.energyAvailable > 650) {
+            //     body = [CLAIM, MOVE];
+            // }
+        //     room.memory.claim = "";
+        // } else if(room.memory.remotebuild != undefined && room.memory.remotebuild != "") {
+            // name = 'remotebuilder' + Game.time;
+            // mem['role'] = 'remotebuilder';
+            // mem['targetRoom'] = room.memory.remotebuild
+            // mem['home'] = mem['targetRoom'];
+            // body = this.genWorker();
+
+        //     room.memory.remotebuild = "";
+        // } else if(room.memory.remoteupgrade != undefined && room.memory.remoteupgrade != "") {
+        //     name = 'remoteupgrader' + Game.time;
+        //     mem['role'] = 'remoteupgrader';
+        //     mem['targetRoom'] = room.memory.remoteupgrade
+        //     mem['home'] = mem['targetRoom'];
+        //     body = this.genWorker();
+
+        //     room.memory.remoteupgrade = "";
+        // }
 
         if (!this.spawning && name != undefined && body.length != 0) {
             let energyOrder = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_EXTENSION && (Math.abs(this.room.memory.anchor.x - s.pos.x) + Math.abs(this.room.memory.anchor.y - s.pos.y) <= 5)});
@@ -145,7 +182,11 @@ StructureSpawn.prototype.spawnController =
             let spawns = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_SPAWN})
             energyOrder = energyOrder.concat(spawns);
 
-            this.spawnCreep(body, name, {memory: mem, energyStructures: energyOrder})
+            if (this.name.substring(0,6) == 'spawn1') {
+                this. spawnCreep(body, name, {directions: [TOP, TOP_RIGHT, RIGHT], memory: mem, energyStructures: energyOrder})
+            } else {
+                this.spawnCreep(body, name, {memory: mem, energyStructures: energyOrder})
+            }
         }
     };
 
@@ -323,13 +364,19 @@ StructureSpawn.prototype.buildController2 =
 
 StructureSpawn.prototype.buildController =
     function() {
-        if(Game.time%100 == 0) {
-            let rootx = this.pos.x + 1;
-            let rooty = this.pos.y;
-
-            this.room.memory.type = 'base';
-
+        let rootx = this.pos.x - 1;
+        let rooty = this.pos.y + 1;
+        
+        if (this.room.memory == undefined || this.room.memory.anchor == undefined || this.room.memory.type == undefined) {
             this.room.memory.anchor = {'x': rootx, 'y': rooty};
+            this.room.memory.type = 'base';
+            console.log('set')
+        }
+        if(Game.time%100 == 0) {
+            // let rootx = this.pos.x - 1;
+            // let rooty = this.pos.y + 1;
+            // this.room.memory.anchor = {'x': rootx, 'y': rooty};
+            // this.room.memory.type = 'base';
 
             let level = this.room.controller.level;
 
@@ -346,11 +393,11 @@ StructureSpawn.prototype.buildController =
                     let found = temppos.lookFor(LOOK_STRUCTURES)
                     if (found.length == 0) {
                         if (building == 'spawn') {
-                            if (posmod.x == -1) {
+                            if (posmod.x == 1 && posmod.y == -1) {
                                 temppos.createConstructionSite(STRUCTURE_SPAWN, 'spawn1-' + this.room.name.toLowerCase());
-                            } else if (posmod.x == -4) {
+                            } else if (posmod.x == 1 && posmod.y == -4) {
                                 temppos.createConstructionSite(STRUCTURE_SPAWN, 'spawn2-' + this.room.name.toLowerCase());
-                            } else if (posmod.x == 4) {
+                            } else if (posmod.x == 4 && posmod.y == -1) {
                                 temppos.createConstructionSite(STRUCTURE_SPAWN, 'spawn3-' + this.room.name.toLowerCase());
                             }
                         } else if (building == 'extension') {
@@ -386,8 +433,15 @@ StructureSpawn.prototype.buildController =
 
                     let target = source.pos.findClosestByPath(roadAnchors, {ignoreCreeps: true});
 
-                    if (target != null && target != undefined) {
-                        let path = source.pos.findPathTo(target, {swampCost: 1.01, ignoreCreeps: true});
+                    let cont = source.pos.findInRange(FIND_STRUCTURES, {filter: (s) => s.structureType == STRUCTURE_CONTAINER})[0];
+
+                    if (target != undefined && target != null) {
+                        let path = [];
+                        if (cont != undefined && cont != null) {
+                            path = source.pos.findPathTo(cont, {swampCost: 1.01, ignoreCreeps: true});
+                        } else {
+                            path = source.pos.findPathTo(target, {swampCost: 1.01, ignoreCreeps: true});
+                        }
 
                         for (let square of path) {
                             let temppos = new RoomPosition(square['x'], square['y'], this.room.name);
@@ -434,22 +488,33 @@ StructureSpawn.prototype.buildController =
         }
     }
 
-const layout = {
-        1: {'name':'layout','shard':'shard0','rcl':'1','buildings':{'spawn':{'pos':[{'x':-1,'y':0}]}}},
+// const layout = {
+//         1: {'name':'layout','shard':'shard0','rcl':'1','buildings':{'spawn':{'pos':[{'x':-1,'y':0}]}}},
         
-        2: {'name':'layout','shard':'shard0','rcl':'2','buildings':{'extension':{'pos':[{'x':-2,'y':-3},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-4,'y':-1},{'x':-3,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]}}},
+//         2: {'name':'layout','shard':'shard0','rcl':'2','buildings':{'extension':{'pos':[{'x':-2,'y':-3},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-4,'y':-1},{'x':-3,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]}}},
         
-        3: {'name':'layout','shard':'shard0','rcl':'3','buildings':{'extension':{'pos':[{'x':-2,'y':-3},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-2,'y':3}]},'tower':{'pos':[{'x':-1,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]}}},
+//         3: {'name':'layout','shard':'shard0','rcl':'3','buildings':{'extension':{'pos':[{'x':-2,'y':-3},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-2,'y':3}]},'tower':{'pos':[{'x':-1,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]}}},
         
-        4: {'name':'layout','shard':'shard0','rcl':'4','buildings':{'extension':{'pos':[{'x':-1,'y':-5},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-3,'y':3},{'x':-2,'y':3}]},'tower':{'pos':[{'x':-1,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
+//         4: {'name':'layout','shard':'shard0','rcl':'4','buildings':{'extension':{'pos':[{'x':-1,'y':-5},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-3,'y':3},{'x':-2,'y':3}]},'tower':{'pos':[{'x':-1,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
         
-        5: {'name':'layout','shard':'shard0','rcl':'5','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':-2,'y':4},{'x':-1,'y':4},{'x':-1,'y':5}]},'tower':{'pos':[{'x':-1,'y':-1},{'x':1,'y':1}]},'spawn':{'pos':[{'x':-1,'y':0}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
+//         5: {'name':'layout','shard':'shard0','rcl':'5','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':-2,'y':4},{'x':-1,'y':4},{'x':-1,'y':5}]},'tower':{'pos':[{'x':-1,'y':-1},{'x':1,'y':1}]},'spawn':{'pos':[{'x':-1,'y':0}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
         
-        6: {'name':'layout','shard':'shard0','rcl':'6','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-6,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-5,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':1,'y':3},{'x':-5,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-1,'y':5},{'x':1,'y':5},{'x':-2,'y':6}]},'road':{'pos':[{'x':-1,'y':-6},{'x':-2,'y':-5},{'x':0,'y':-5},{'x':-3,'y':-4},{'x':0,'y':-4},{'x':-4,'y':-3},{'x':0,'y':-3},{'x':-5,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':-6,'y':-1},{'x':-2,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':2,'y':0},{'x':-6,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':2,'y':1},{'x':-5,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':-4,'y':3},{'x':0,'y':3},{'x':-3,'y':4},{'x':0,'y':4},{'x':-2,'y':5},{'x':0,'y':5},{'x':2,'y':5},{'x':-1,'y':6},{'x':1,'y':6}]},'lab':{'pos':[{'x':1,'y':-3},{'x':2,'y':-3},{'x':2,'y':-2}]},'tower':{'pos':[{'x':-1,'y':-1},{'x':1,'y':1}]},'terminal':{'pos':[{'x':0,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
+//         6: {'name':'layout','shard':'shard0','rcl':'6','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-6,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-5,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':1,'y':3},{'x':-5,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-1,'y':5},{'x':1,'y':5},{'x':-2,'y':6}]},'road':{'pos':[{'x':-1,'y':-6},{'x':-2,'y':-5},{'x':0,'y':-5},{'x':-3,'y':-4},{'x':0,'y':-4},{'x':-4,'y':-3},{'x':0,'y':-3},{'x':-5,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':-6,'y':-1},{'x':-2,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':2,'y':0},{'x':-6,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':2,'y':1},{'x':-5,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':-4,'y':3},{'x':0,'y':3},{'x':-3,'y':4},{'x':0,'y':4},{'x':-2,'y':5},{'x':0,'y':5},{'x':2,'y':5},{'x':-1,'y':6},{'x':1,'y':6}]},'lab':{'pos':[{'x':1,'y':-3},{'x':2,'y':-3},{'x':2,'y':-2}]},'tower':{'pos':[{'x':-1,'y':-1},{'x':1,'y':1}]},'terminal':{'pos':[{'x':0,'y':-1}]},'spawn':{'pos':[{'x':-1,'y':0}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
         
-        7: {'name':'layout','shard':'shard0','rcl':'7','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':3,'y':1},{'x':4,'y':1},{'x':5,'y':1},{'x':-6,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':2,'y':2},{'x':3,'y':2},{'x':4,'y':2},{'x':-5,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':1,'y':3},{'x':2,'y':3},{'x':3,'y':3},{'x':-5,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-1,'y':5},{'x':1,'y':5},{'x':3,'y':5},{'x':-2,'y':6},{'x':2,'y':6}]},'road':{'pos':[{'x':-1,'y':-6},{'x':1,'y':-6},{'x':-2,'y':-5},{'x':0,'y':-5},{'x':1,'y':-5},{'x':2,'y':-5},{'x':-3,'y':-4},{'x':0,'y':-4},{'x':3,'y':-4},{'x':-4,'y':-3},{'x':0,'y':-3},{'x':4,'y':-3},{'x':-5,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':5,'y':-2},{'x':-6,'y':-1},{'x':-2,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':5,'y':-1},{'x':6,'y':-1},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':2,'y':0},{'x':3,'y':0},{'x':4,'y':0},{'x':5,'y':0},{'x':-6,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':2,'y':1},{'x':6,'y':1},{'x':-5,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':5,'y':2},{'x':-4,'y':3},{'x':0,'y':3},{'x':4,'y':3},{'x':-3,'y':4},{'x':0,'y':4},{'x':3,'y':4},{'x':-2,'y':5},{'x':0,'y':5},{'x':2,'y':5},{'x':-1,'y':6},{'x':1,'y':6}]},'spawn':{'pos':[{'x':-4,'y':-4},{'x':-1,'y':0}]},'lab':{'pos':[{'x':1,'y':-4},{'x':1,'y':-3},{'x':2,'y':-3},{'x':2,'y':-2},{'x':3,'y':-2},{'x':3,'y':-1}]},'tower':{'pos':[{'x':-1,'y':-1},{'x':-6,'y':0},{'x':1,'y':1}]},'terminal':{'pos':[{'x':0,'y':-1}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
+//         7: {'name':'layout','shard':'shard0','rcl':'7','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':3,'y':1},{'x':4,'y':1},{'x':5,'y':1},{'x':-6,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':2,'y':2},{'x':3,'y':2},{'x':4,'y':2},{'x':-5,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':1,'y':3},{'x':2,'y':3},{'x':3,'y':3},{'x':-5,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-1,'y':5},{'x':1,'y':5},{'x':3,'y':5},{'x':-2,'y':6},{'x':2,'y':6}]},'road':{'pos':[{'x':-1,'y':-6},{'x':1,'y':-6},{'x':-2,'y':-5},{'x':0,'y':-5},{'x':1,'y':-5},{'x':2,'y':-5},{'x':-3,'y':-4},{'x':0,'y':-4},{'x':3,'y':-4},{'x':-4,'y':-3},{'x':0,'y':-3},{'x':4,'y':-3},{'x':-5,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':5,'y':-2},{'x':-6,'y':-1},{'x':-2,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':5,'y':-1},{'x':6,'y':-1},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':2,'y':0},{'x':3,'y':0},{'x':4,'y':0},{'x':5,'y':0},{'x':-6,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':2,'y':1},{'x':6,'y':1},{'x':-5,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':5,'y':2},{'x':-4,'y':3},{'x':0,'y':3},{'x':4,'y':3},{'x':-3,'y':4},{'x':0,'y':4},{'x':3,'y':4},{'x':-2,'y':5},{'x':0,'y':5},{'x':2,'y':5},{'x':-1,'y':6},{'x':1,'y':6}]},'spawn':{'pos':[{'x':-4,'y':-4},{'x':-1,'y':0}]},'lab':{'pos':[{'x':1,'y':-4},{'x':1,'y':-3},{'x':2,'y':-3},{'x':2,'y':-2},{'x':3,'y':-2},{'x':3,'y':-1}]},'tower':{'pos':[{'x':-1,'y':-1},{'x':-6,'y':0},{'x':1,'y':1}]},'terminal':{'pos':[{'x':0,'y':-1}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]}}},
         
-        8: {'name':'layout','shard':'shard0','rcl':'8','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':3,'y':-5},{'x':4,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':5,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':5,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':6,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':3,'y':1},{'x':4,'y':1},{'x':5,'y':1},{'x':-6,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':2,'y':2},{'x':3,'y':2},{'x':4,'y':2},{'x':6,'y':2},{'x':-5,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':1,'y':3},{'x':2,'y':3},{'x':3,'y':3},{'x':5,'y':3},{'x':-5,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':5,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-1,'y':5},{'x':1,'y':5},{'x':3,'y':5},{'x':4,'y':5},{'x':-2,'y':6},{'x':2,'y':6}]},'road':{'pos':[{'x':-1,'y':-6},{'x':1,'y':-6},{'x':-2,'y':-5},{'x':0,'y':-5},{'x':1,'y':-5},{'x':2,'y':-5},{'x':-3,'y':-4},{'x':0,'y':-4},{'x':3,'y':-4},{'x':-4,'y':-3},{'x':0,'y':-3},{'x':4,'y':-3},{'x':-5,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':5,'y':-2},{'x':-6,'y':-1},{'x':-2,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':5,'y':-1},{'x':6,'y':-1},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':2,'y':0},{'x':3,'y':0},{'x':4,'y':0},{'x':5,'y':0},{'x':-6,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':2,'y':1},{'x':6,'y':1},{'x':-5,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':5,'y':2},{'x':-4,'y':3},{'x':0,'y':3},{'x':4,'y':3},{'x':-3,'y':4},{'x':0,'y':4},{'x':3,'y':4},{'x':-2,'y':5},{'x':0,'y':5},{'x':2,'y':5},{'x':-1,'y':6},{'x':1,'y':6}]},'tower':{'pos':[{'x':0,'y':-6},{'x':-1,'y':-1},{'x':-6,'y':0},{'x':6,'y':0},{'x':1,'y':1},{'x':0,'y':6}]},'spawn':{'pos':[{'x':-4,'y':-4},{'x':-1,'y':0},{'x':4,'y':4}]},'lab':{'pos':[{'x':1,'y':-4},{'x':2,'y':-4},{'x':1,'y':-3},{'x':2,'y':-3},{'x':3,'y':-3},{'x':2,'y':-2},{'x':3,'y':-2},{'x':4,'y':-2},{'x':3,'y':-1},{'x':4,'y':-1}]},'observer':{'pos':[{'x':4,'y':-4}]},'terminal':{'pos':[{'x':0,'y':-1}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]},'nuker':{'pos':[{'x':0,'y':1}]},'powerSpawn':{'pos':[{'x':-4,'y':4}]}}},
+//         8: {'name':'layout','shard':'shard0','rcl':'8','buildings':{'extension':{'pos':[{'x':-2,'y':-6},{'x':2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-1,'y':-5},{'x':3,'y':-5},{'x':4,'y':-5},{'x':-5,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':5,'y':-4},{'x':-5,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':5,'y':-3},{'x':-6,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':6,'y':-2},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':3,'y':1},{'x':4,'y':1},{'x':5,'y':1},{'x':-6,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':2,'y':2},{'x':3,'y':2},{'x':4,'y':2},{'x':6,'y':2},{'x':-5,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':1,'y':3},{'x':2,'y':3},{'x':3,'y':3},{'x':5,'y':3},{'x':-5,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':5,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-1,'y':5},{'x':1,'y':5},{'x':3,'y':5},{'x':4,'y':5},{'x':-2,'y':6},{'x':2,'y':6}]},'road':{'pos':[{'x':-1,'y':-6},{'x':1,'y':-6},{'x':-2,'y':-5},{'x':0,'y':-5},{'x':1,'y':-5},{'x':2,'y':-5},{'x':-3,'y':-4},{'x':0,'y':-4},{'x':3,'y':-4},{'x':-4,'y':-3},{'x':0,'y':-3},{'x':4,'y':-3},{'x':-5,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':5,'y':-2},{'x':-6,'y':-1},{'x':-2,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':5,'y':-1},{'x':6,'y':-1},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':2,'y':0},{'x':3,'y':0},{'x':4,'y':0},{'x':5,'y':0},{'x':-6,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':2,'y':1},{'x':6,'y':1},{'x':-5,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':5,'y':2},{'x':-4,'y':3},{'x':0,'y':3},{'x':4,'y':3},{'x':-3,'y':4},{'x':0,'y':4},{'x':3,'y':4},{'x':-2,'y':5},{'x':0,'y':5},{'x':2,'y':5},{'x':-1,'y':6},{'x':1,'y':6}]},'tower':{'pos':[{'x':0,'y':-6},{'x':-1,'y':-1},{'x':-6,'y':0},{'x':6,'y':0},{'x':1,'y':1},{'x':0,'y':6}]},'spawn':{'pos':[{'x':-4,'y':-4},{'x':-1,'y':0},{'x':4,'y':4}]},'lab':{'pos':[{'x':1,'y':-4},{'x':2,'y':-4},{'x':1,'y':-3},{'x':2,'y':-3},{'x':3,'y':-3},{'x':2,'y':-2},{'x':3,'y':-2},{'x':4,'y':-2},{'x':3,'y':-1},{'x':4,'y':-1}]},'observer':{'pos':[{'x':4,'y':-4}]},'terminal':{'pos':[{'x':0,'y':-1}]},'link':{'pos':[{'x':0,'y':0}]},'storage':{'pos':[{'x':1,'y':0}]},'nuker':{'pos':[{'x':0,'y':1}]},'powerSpawn':{'pos':[{'x':-4,'y':4}]}}},
 
-        0: {'name':'textExport','shard':'shard0','rcl':'8','buildings':{'road':{'pos':[{'x':-2,'y':-6},{'x':-1,'y':-6},{'x':0,'y':-6},{'x':1,'y':-6},{'x':2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-2,'y':-5},{'x':-1,'y':-5},{'x':0,'y':-5},{'x':1,'y':-5},{'x':2,'y':-5},{'x':3,'y':-5},{'x':4,'y':-5},{'x':-5,'y':-4},{'x':-4,'y':-4},{'x':-3,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':0,'y':-4},{'x':1,'y':-4},{'x':2,'y':-4},{'x':3,'y':-4},{'x':4,'y':-4},{'x':5,'y':-4},{'x':-5,'y':-3},{'x':-4,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':0,'y':-3},{'x':1,'y':-3},{'x':2,'y':-3},{'x':3,'y':-3},{'x':4,'y':-3},{'x':5,'y':-3},{'x':-6,'y':-2},{'x':-5,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':2,'y':-2},{'x':3,'y':-2},{'x':4,'y':-2},{'x':5,'y':-2},{'x':6,'y':-2},{'x':-6,'y':-1},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-2,'y':-1},{'x':-1,'y':-1},{'x':0,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':3,'y':-1},{'x':4,'y':-1},{'x':5,'y':-1},{'x':6,'y':-1},{'x':-6,'y':0},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':-1,'y':0},{'x':0,'y':0},{'x':1,'y':0},{'x':2,'y':0},{'x':3,'y':0},{'x':4,'y':0},{'x':5,'y':0},{'x':6,'y':0},{'x':-6,'y':1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':0,'y':1},{'x':1,'y':1},{'x':2,'y':1},{'x':3,'y':1},{'x':4,'y':1},{'x':5,'y':1},{'x':6,'y':1},{'x':-6,'y':2},{'x':-5,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':2,'y':2},{'x':3,'y':2},{'x':4,'y':2},{'x':5,'y':2},{'x':6,'y':2},{'x':-5,'y':3},{'x':-4,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':0,'y':3},{'x':1,'y':3},{'x':2,'y':3},{'x':3,'y':3},{'x':4,'y':3},{'x':5,'y':3},{'x':-5,'y':4},{'x':-4,'y':4},{'x':-3,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':0,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':3,'y':4},{'x':4,'y':4},{'x':5,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-2,'y':5},{'x':-1,'y':5},{'x':0,'y':5},{'x':1,'y':5},{'x':2,'y':5},{'x':3,'y':5},{'x':4,'y':5},{'x':-2,'y':6},{'x':-1,'y':6},{'x':0,'y':6},{'x':1,'y':6},{'x':2,'y':6}]}}}
+//         0: {'name':'textExport','shard':'shard0','rcl':'8','buildings':{'road':{'pos':[{'x':-2,'y':-6},{'x':-1,'y':-6},{'x':0,'y':-6},{'x':1,'y':-6},{'x':2,'y':-6},{'x':-4,'y':-5},{'x':-3,'y':-5},{'x':-2,'y':-5},{'x':-1,'y':-5},{'x':0,'y':-5},{'x':1,'y':-5},{'x':2,'y':-5},{'x':3,'y':-5},{'x':4,'y':-5},{'x':-5,'y':-4},{'x':-4,'y':-4},{'x':-3,'y':-4},{'x':-2,'y':-4},{'x':-1,'y':-4},{'x':0,'y':-4},{'x':1,'y':-4},{'x':2,'y':-4},{'x':3,'y':-4},{'x':4,'y':-4},{'x':5,'y':-4},{'x':-5,'y':-3},{'x':-4,'y':-3},{'x':-3,'y':-3},{'x':-2,'y':-3},{'x':-1,'y':-3},{'x':0,'y':-3},{'x':1,'y':-3},{'x':2,'y':-3},{'x':3,'y':-3},{'x':4,'y':-3},{'x':5,'y':-3},{'x':-6,'y':-2},{'x':-5,'y':-2},{'x':-4,'y':-2},{'x':-3,'y':-2},{'x':-2,'y':-2},{'x':-1,'y':-2},{'x':0,'y':-2},{'x':1,'y':-2},{'x':2,'y':-2},{'x':3,'y':-2},{'x':4,'y':-2},{'x':5,'y':-2},{'x':6,'y':-2},{'x':-6,'y':-1},{'x':-5,'y':-1},{'x':-4,'y':-1},{'x':-3,'y':-1},{'x':-2,'y':-1},{'x':-1,'y':-1},{'x':0,'y':-1},{'x':1,'y':-1},{'x':2,'y':-1},{'x':3,'y':-1},{'x':4,'y':-1},{'x':5,'y':-1},{'x':6,'y':-1},{'x':-6,'y':0},{'x':-5,'y':0},{'x':-4,'y':0},{'x':-3,'y':0},{'x':-2,'y':0},{'x':-1,'y':0},{'x':0,'y':0},{'x':1,'y':0},{'x':2,'y':0},{'x':3,'y':0},{'x':4,'y':0},{'x':5,'y':0},{'x':6,'y':0},{'x':-6,'y':1},{'x':-5,'y':1},{'x':-4,'y':1},{'x':-3,'y':1},{'x':-2,'y':1},{'x':-1,'y':1},{'x':0,'y':1},{'x':1,'y':1},{'x':2,'y':1},{'x':3,'y':1},{'x':4,'y':1},{'x':5,'y':1},{'x':6,'y':1},{'x':-6,'y':2},{'x':-5,'y':2},{'x':-4,'y':2},{'x':-3,'y':2},{'x':-2,'y':2},{'x':-1,'y':2},{'x':0,'y':2},{'x':1,'y':2},{'x':2,'y':2},{'x':3,'y':2},{'x':4,'y':2},{'x':5,'y':2},{'x':6,'y':2},{'x':-5,'y':3},{'x':-4,'y':3},{'x':-3,'y':3},{'x':-2,'y':3},{'x':-1,'y':3},{'x':0,'y':3},{'x':1,'y':3},{'x':2,'y':3},{'x':3,'y':3},{'x':4,'y':3},{'x':5,'y':3},{'x':-5,'y':4},{'x':-4,'y':4},{'x':-3,'y':4},{'x':-2,'y':4},{'x':-1,'y':4},{'x':0,'y':4},{'x':1,'y':4},{'x':2,'y':4},{'x':3,'y':4},{'x':4,'y':4},{'x':5,'y':4},{'x':-4,'y':5},{'x':-3,'y':5},{'x':-2,'y':5},{'x':-1,'y':5},{'x':0,'y':5},{'x':1,'y':5},{'x':2,'y':5},{'x':3,'y':5},{'x':4,'y':5},{'x':-2,'y':6},{'x':-1,'y':6},{'x':0,'y':6},{'x':1,'y':6},{'x':2,'y':6}]}}}
+// }
+
+const layout = {
+    1: {"name": "textExport", "shard": "shard0", "rcl": "1", "buildings": {"spawn": {"pos": [{"x": 1, "y": -1}]}}}, 
+    2: {"name": "textExport", "shard": "shard0", "rcl": "2", "buildings": {"spawn": {"pos": [{"x": 1, "y": -1}]}, "extension": {"pos": [{"x": 4, "y": 1}, {"x": 5, "y": 1}, {"x": 3, "y": 2}, {"x": 4, "y": 2}, {"x": 3, "y": 3}]}}},
+    3: {"name": "textExport", "shard": "shard0", "rcl": "3", "buildings": {"spawn": {"pos": [{"x": 1, "y": -1}]}, "tower": {"pos": [{"x": 1, "y": 1}]}, "extension": {"pos": [{"x": 4, "y": 1}, {"x": 5, "y": 1}, {"x": 3, "y": 2}, {"x": 4, "y": 2}, {"x": 2, "y": 3}, {"x": 3, "y": 3}, {"x": 1, "y": 4}, {"x": 2, "y": 4}, {"x": -1, "y": 5}, {"x": 1, "y": 5}]}}},
+    4: {"name": "textExport", "shard": "shard0", "rcl": "4", "buildings": {"road": {"pos": [{"x": -2, "y": -7}, {"x": -1, "y": -7}, {"x": 0, "y": -7}, {"x": 1, "y": -7}, {"x": 2, "y": -7}, {"x": -3, "y": -6}, {"x": 0, "y": -6}, {"x": 3, "y": -6}, {"x": -4, "y": -5}, {"x": 0, "y": -5}, {"x": 4, "y": -5}, {"x": -5, "y": -4}, {"x": 0, "y": -4}, {"x": 5, "y": -4}, {"x": -6, "y": -3}, {"x": -1, "y": -3}, {"x": 0, "y": -3}, {"x": 1, "y": -3}, {"x": 6, "y": -3}, {"x": -7, "y": -2}, {"x": -2, "y": -2}, {"x": -1, "y": -2}, {"x": 1, "y": -2}, {"x": 2, "y": -2}, {"x": 7, "y": -2}, {"x": -7, "y": -1}, {"x": -3, "y": -1}, {"x": -2, "y": -1}, {"x": 2, "y": -1}, {"x": 3, "y": -1}, {"x": 7, "y": -1}, {"x": -7, "y": 0}, {"x": -6, "y": 0}, {"x": -5, "y": 0}, {"x": -4, "y": 0}, {"x": -3, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}, {"x": 5, "y": 0}, {"x": 6, "y": 0}, {"x": 7, "y": 0}, {"x": -7, "y": 1}, {"x": -3, "y": 1}, {"x": -2, "y": 1}, {"x": 2, "y": 1}, {"x": 3, "y": 1}, {"x": 7, "y": 1}, {"x": -7, "y": 2}, {"x": -2, "y": 2}, {"x": -1, "y": 2}, {"x": 1, "y": 2}, {"x": 2, "y": 2}, {"x": 7, "y": 2}, {"x": -6, "y": 3}, {"x": -1, "y": 3}, {"x": 0, "y": 3}, {"x": 1, "y": 3}, {"x": 6, "y": 3}, {"x": -5, "y": 4}, {"x": 0, "y": 4}, {"x": 5, "y": 4}, {"x": -4, "y": 5}, {"x": 0, "y": 5}, {"x": 4, "y": 5}, {"x": -3, "y": 6}, {"x": 0, "y": 6}, {"x": 3, "y": 6}, {"x": -2, "y": 7}, {"x": -1, "y": 7}, {"x": 0, "y": 7}, {"x": 1, "y": 7}, {"x": 2, "y": 7}]}, "extension": {"pos": [{"x": -5, "y": -1}, {"x": -4, "y": -1}, {"x": -5, "y": 1}, {"x": -4, "y": 1}, {"x": 4, "y": 1}, {"x": 5, "y": 1}, {"x": -4, "y": 2}, {"x": -3, "y": 2}, {"x": 3, "y": 2}, {"x": 4, "y": 2}, {"x": -3, "y": 3}, {"x": -2, "y": 3}, {"x": 2, "y": 3}, {"x": 3, "y": 3}, {"x": -2, "y": 4}, {"x": -1, "y": 4}, {"x": 1, "y": 4}, {"x": 2, "y": 4}, {"x": -1, "y": 5}, {"x": 1, "y": 5}]}, "spawn": {"pos": [{"x": 1, "y": -1}]}, "storage": {"pos": [{"x": -1, "y": 0}]}, "tower": {"pos": [{"x": 1, "y": 1}]}}},
+    5: {"name": "textExport", "shard": "shard0", "rcl": "5", "buildings": {"road": {"pos": [{"x": -2, "y": -7}, {"x": -1, "y": -7}, {"x": 0, "y": -7}, {"x": 1, "y": -7}, {"x": 2, "y": -7}, {"x": -3, "y": -6}, {"x": 0, "y": -6}, {"x": 3, "y": -6}, {"x": -4, "y": -5}, {"x": 0, "y": -5}, {"x": 4, "y": -5}, {"x": -5, "y": -4}, {"x": 0, "y": -4}, {"x": 5, "y": -4}, {"x": -6, "y": -3}, {"x": -1, "y": -3}, {"x": 0, "y": -3}, {"x": 1, "y": -3}, {"x": 6, "y": -3}, {"x": -7, "y": -2}, {"x": -2, "y": -2}, {"x": -1, "y": -2}, {"x": 1, "y": -2}, {"x": 2, "y": -2}, {"x": 7, "y": -2}, {"x": -7, "y": -1}, {"x": -3, "y": -1}, {"x": -2, "y": -1}, {"x": 2, "y": -1}, {"x": 3, "y": -1}, {"x": 7, "y": -1}, {"x": -7, "y": 0}, {"x": -6, "y": 0}, {"x": -5, "y": 0}, {"x": -4, "y": 0}, {"x": -3, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}, {"x": 5, "y": 0}, {"x": 6, "y": 0}, {"x": 7, "y": 0}, {"x": -7, "y": 1}, {"x": -3, "y": 1}, {"x": -2, "y": 1}, {"x": 2, "y": 1}, {"x": 3, "y": 1}, {"x": 7, "y": 1}, {"x": -7, "y": 2}, {"x": -2, "y": 2}, {"x": -1, "y": 2}, {"x": 1, "y": 2}, {"x": 2, "y": 2}, {"x": 7, "y": 2}, {"x": -6, "y": 3}, {"x": -1, "y": 3}, {"x": 0, "y": 3}, {"x": 1, "y": 3}, {"x": 6, "y": 3}, {"x": -5, "y": 4}, {"x": 0, "y": 4}, {"x": 5, "y": 4}, {"x": -4, "y": 5}, {"x": 0, "y": 5}, {"x": 4, "y": 5}, {"x": -3, "y": 6}, {"x": 0, "y": 6}, {"x": 3, "y": 6}, {"x": -2, "y": 7}, {"x": -1, "y": 7}, {"x": 0, "y": 7}, {"x": 1, "y": 7}, {"x": 2, "y": 7}]}, "extension": {"pos": [{"x": -1, "y": -5}, {"x": -2, "y": -4}, {"x": -1, "y": -4}, {"x": -3, "y": -3}, {"x": -2, "y": -3}, {"x": -4, "y": -2}, {"x": -3, "y": -2}, {"x": -5, "y": -1}, {"x": -4, "y": -1}, {"x": -5, "y": 1}, {"x": -4, "y": 1}, {"x": 4, "y": 1}, {"x": 5, "y": 1}, {"x": 6, "y": 1}, {"x": -4, "y": 2}, {"x": -3, "y": 2}, {"x": 3, "y": 2}, {"x": 4, "y": 2}, {"x": 5, "y": 2}, {"x": 6, "y": 2}, {"x": -3, "y": 3}, {"x": -2, "y": 3}, {"x": 2, "y": 3}, {"x": 3, "y": 3}, {"x": -2, "y": 4}, {"x": -1, "y": 4}, {"x": 1, "y": 4}, {"x": 2, "y": 4}, {"x": -1, "y": 5}, {"x": 1, "y": 5}]}, "tower": {"pos": [{"x": -1, "y": -1}, {"x": 1, "y": 1}]}, "spawn": {"pos": [{"x": 1, "y": -1}]}, "storage": {"pos": [{"x": -1, "y": 0}]}, "link": {"pos": [{"x": 0, "y": 1}]}}},
+    6: {"name": "textExport", "shard": "shard0", "rcl": "6", "buildings": {"road": {"pos": [{"x": -2, "y": -7}, {"x": -1, "y": -7}, {"x": 0, "y": -7}, {"x": 1, "y": -7}, {"x": 2, "y": -7}, {"x": -3, "y": -6}, {"x": 0, "y": -6}, {"x": 3, "y": -6}, {"x": -4, "y": -5}, {"x": 0, "y": -5}, {"x": 4, "y": -5}, {"x": -5, "y": -4}, {"x": 0, "y": -4}, {"x": 5, "y": -4}, {"x": -6, "y": -3}, {"x": -1, "y": -3}, {"x": 0, "y": -3}, {"x": 1, "y": -3}, {"x": 3, "y": -3}, {"x": 6, "y": -3}, {"x": -7, "y": -2}, {"x": -2, "y": -2}, {"x": -1, "y": -2}, {"x": 1, "y": -2}, {"x": 2, "y": -2}, {"x": 7, "y": -2}, {"x": -7, "y": -1}, {"x": -3, "y": -1}, {"x": -2, "y": -1}, {"x": 2, "y": -1}, {"x": 3, "y": -1}, {"x": 7, "y": -1}, {"x": -7, "y": 0}, {"x": -6, "y": 0}, {"x": -5, "y": 0}, {"x": -4, "y": 0}, {"x": -3, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}, {"x": 5, "y": 0}, {"x": 6, "y": 0}, {"x": 7, "y": 0}, {"x": -7, "y": 1}, {"x": -3, "y": 1}, {"x": -2, "y": 1}, {"x": 2, "y": 1}, {"x": 3, "y": 1}, {"x": 7, "y": 1}, {"x": -7, "y": 2}, {"x": -2, "y": 2}, {"x": -1, "y": 2}, {"x": 1, "y": 2}, {"x": 2, "y": 2}, {"x": 7, "y": 2}, {"x": -6, "y": 3}, {"x": -1, "y": 3}, {"x": 0, "y": 3}, {"x": 1, "y": 3}, {"x": 6, "y": 3}, {"x": -5, "y": 4}, {"x": 0, "y": 4}, {"x": 5, "y": 4}, {"x": -4, "y": 5}, {"x": 0, "y": 5}, {"x": 4, "y": 5}, {"x": -3, "y": 6}, {"x": 0, "y": 6}, {"x": 3, "y": 6}, {"x": -2, "y": 7}, {"x": -1, "y": 7}, {"x": 0, "y": 7}, {"x": 1, "y": 7}, {"x": 2, "y": 7}]}, "extension": {"pos": [{"x": -1, "y": -5}, {"x": -2, "y": -4}, {"x": -1, "y": -4}, {"x": -3, "y": -3}, {"x": -2, "y": -3}, {"x": -4, "y": -2}, {"x": -3, "y": -2}, {"x": -5, "y": -1}, {"x": -4, "y": -1}, {"x": -5, "y": 1}, {"x": -4, "y": 1}, {"x": 4, "y": 1}, {"x": 5, "y": 1}, {"x": 6, "y": 1}, {"x": -4, "y": 2}, {"x": -3, "y": 2}, {"x": 3, "y": 2}, {"x": 4, "y": 2}, {"x": 5, "y": 2}, {"x": 6, "y": 2}, {"x": -3, "y": 3}, {"x": -2, "y": 3}, {"x": 2, "y": 3}, {"x": 3, "y": 3}, {"x": 4, "y": 3}, {"x": 5, "y": 3}, {"x": -2, "y": 4}, {"x": -1, "y": 4}, {"x": 1, "y": 4}, {"x": 2, "y": 4}, {"x": 3, "y": 4}, {"x": 4, "y": 4}, {"x": -1, "y": 5}, {"x": 1, "y": 5}, {"x": 2, "y": 5}, {"x": 3, "y": 5}, {"x": -2, "y": 6}, {"x": -1, "y": 6}, {"x": 1, "y": 6}, {"x": 2, "y": 6}]}, "lab": {"pos": [{"x": 3, "y": -4}, {"x": 4, "y": -3}, {"x": 3, "y": -2}]}, "tower": {"pos": [{"x": -1, "y": -1}, {"x": 1, "y": 1}]}, "terminal": {"pos": [{"x": 0, "y": -1}]}, "spawn": {"pos": [{"x": 1, "y": -1}]}, "storage": {"pos": [{"x": -1, "y": 0}]}, "link": {"pos": [{"x": 0, "y": 1}]}}},
+    7: {"name": "textExport", "shard": "shard0", "rcl": "7", "buildings": {"road": {"pos": [{"x": -2, "y": -7}, {"x": -1, "y": -7}, {"x": 0, "y": -7}, {"x": 1, "y": -7}, {"x": 2, "y": -7}, {"x": -3, "y": -6}, {"x": 0, "y": -6}, {"x": 3, "y": -6}, {"x": -4, "y": -5}, {"x": 0, "y": -5}, {"x": 4, "y": -5}, {"x": -5, "y": -4}, {"x": 0, "y": -4}, {"x": 5, "y": -4}, {"x": -6, "y": -3}, {"x": -1, "y": -3}, {"x": 0, "y": -3}, {"x": 1, "y": -3}, {"x": 3, "y": -3}, {"x": 6, "y": -3}, {"x": -7, "y": -2}, {"x": -2, "y": -2}, {"x": -1, "y": -2}, {"x": 1, "y": -2}, {"x": 2, "y": -2}, {"x": 7, "y": -2}, {"x": -7, "y": -1}, {"x": -3, "y": -1}, {"x": -2, "y": -1}, {"x": 2, "y": -1}, {"x": 3, "y": -1}, {"x": 7, "y": -1}, {"x": -7, "y": 0}, {"x": -6, "y": 0}, {"x": -5, "y": 0}, {"x": -4, "y": 0}, {"x": -3, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}, {"x": 5, "y": 0}, {"x": 6, "y": 0}, {"x": 7, "y": 0}, {"x": -7, "y": 1}, {"x": -3, "y": 1}, {"x": -2, "y": 1}, {"x": 2, "y": 1}, {"x": 3, "y": 1}, {"x": 7, "y": 1}, {"x": -7, "y": 2}, {"x": -2, "y": 2}, {"x": -1, "y": 2}, {"x": 1, "y": 2}, {"x": 2, "y": 2}, {"x": 7, "y": 2}, {"x": -6, "y": 3}, {"x": -1, "y": 3}, {"x": 0, "y": 3}, {"x": 1, "y": 3}, {"x": 6, "y": 3}, {"x": -5, "y": 4}, {"x": 0, "y": 4}, {"x": 5, "y": 4}, {"x": -4, "y": 5}, {"x": 0, "y": 5}, {"x": 4, "y": 5}, {"x": -3, "y": 6}, {"x": 0, "y": 6}, {"x": 3, "y": 6}, {"x": -2, "y": 7}, {"x": -1, "y": 7}, {"x": 0, "y": 7}, {"x": 1, "y": 7}, {"x": 2, "y": 7}]}, "extension": {"pos": [{"x": -1, "y": -5}, {"x": -2, "y": -4}, {"x": -1, "y": -4}, {"x": -3, "y": -3}, {"x": -2, "y": -3}, {"x": -4, "y": -2}, {"x": -3, "y": -2}, {"x": -6, "y": -1}, {"x": -5, "y": -1}, {"x": -4, "y": -1}, {"x": -6, "y": 1}, {"x": -5, "y": 1}, {"x": -4, "y": 1}, {"x": 4, "y": 1}, {"x": 5, "y": 1}, {"x": 6, "y": 1}, {"x": -6, "y": 2}, {"x": -5, "y": 2}, {"x": -4, "y": 2}, {"x": -3, "y": 2}, {"x": 3, "y": 2}, {"x": 4, "y": 2}, {"x": 5, "y": 2}, {"x": 6, "y": 2}, {"x": -5, "y": 3}, {"x": -4, "y": 3}, {"x": -3, "y": 3}, {"x": -2, "y": 3}, {"x": 2, "y": 3}, {"x": 3, "y": 3}, {"x": 4, "y": 3}, {"x": 5, "y": 3}, {"x": -4, "y": 4}, {"x": -3, "y": 4}, {"x": -2, "y": 4}, {"x": -1, "y": 4}, {"x": 1, "y": 4}, {"x": 2, "y": 4}, {"x": 3, "y": 4}, {"x": 4, "y": 4}, {"x": -3, "y": 5}, {"x": -2, "y": 5}, {"x": -1, "y": 5}, {"x": 1, "y": 5}, {"x": 2, "y": 5}, {"x": 3, "y": 5}, {"x": -2, "y": 6}, {"x": -1, "y": 6}, {"x": 1, "y": 6}, {"x": 2, "y": 6}]}, "spawn": {"pos": [{"x": 1, "y": -4}, {"x": 1, "y": -1}]}, "lab": {"pos": [{"x": 2, "y": -4}, {"x": 3, "y": -4}, {"x": 4, "y": -4}, {"x": 4, "y": -3}, {"x": 3, "y": -2}, {"x": 4, "y": -2}]}, "tower": {"pos": [{"x": -1, "y": -1}, {"x": 2, "y": 0}, {"x": 1, "y": 1}]}, "terminal": {"pos": [{"x": 0, "y": -1}]}, "storage": {"pos": [{"x": -1, "y": 0}]}, "factory": {"pos": [{"x": 1, "y": 0}]}, "link": {"pos": [{"x": 0, "y": 1}]}}},
+    8: {"name": "textExport", "shard": "shard0", "rcl": "8", "buildings": {"road": {"pos": [{"x": -2, "y": -7}, {"x": -1, "y": -7}, {"x": 0, "y": -7}, {"x": 1, "y": -7}, {"x": 2, "y": -7}, {"x": -3, "y": -6}, {"x": 0, "y": -6}, {"x": 1, "y": -6}, {"x": 2, "y": -6}, {"x": 3, "y": -6}, {"x": -4, "y": -5}, {"x": 0, "y": -5}, {"x": 4, "y": -5}, {"x": -5, "y": -4}, {"x": 0, "y": -4}, {"x": 5, "y": -4}, {"x": -6, "y": -3}, {"x": -1, "y": -3}, {"x": 0, "y": -3}, {"x": 1, "y": -3}, {"x": 3, "y": -3}, {"x": 6, "y": -3}, {"x": -7, "y": -2}, {"x": -2, "y": -2}, {"x": -1, "y": -2}, {"x": 1, "y": -2}, {"x": 2, "y": -2}, {"x": 6, "y": -2}, {"x": 7, "y": -2}, {"x": -7, "y": -1}, {"x": -3, "y": -1}, {"x": -2, "y": -1}, {"x": 2, "y": -1}, {"x": 3, "y": -1}, {"x": 6, "y": -1}, {"x": 7, "y": -1}, {"x": -7, "y": 0}, {"x": -6, "y": 0}, {"x": -5, "y": 0}, {"x": -4, "y": 0}, {"x": -3, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}, {"x": 5, "y": 0}, {"x": 6, "y": 0}, {"x": 7, "y": 0}, {"x": -7, "y": 1}, {"x": -3, "y": 1}, {"x": -2, "y": 1}, {"x": 2, "y": 1}, {"x": 3, "y": 1}, {"x": 7, "y": 1}, {"x": -7, "y": 2}, {"x": -2, "y": 2}, {"x": -1, "y": 2}, {"x": 1, "y": 2}, {"x": 2, "y": 2}, {"x": 7, "y": 2}, {"x": -6, "y": 3}, {"x": -1, "y": 3}, {"x": 0, "y": 3}, {"x": 1, "y": 3}, {"x": 6, "y": 3}, {"x": -5, "y": 4}, {"x": 0, "y": 4}, {"x": 5, "y": 4}, {"x": -4, "y": 5}, {"x": 0, "y": 5}, {"x": 4, "y": 5}, {"x": -3, "y": 6}, {"x": 0, "y": 6}, {"x": 3, "y": 6}, {"x": -2, "y": 7}, {"x": -1, "y": 7}, {"x": 0, "y": 7}, {"x": 1, "y": 7}, {"x": 2, "y": 7}]}, "extension": {"pos": [{"x": -2, "y": -6}, {"x": -1, "y": -6}, {"x": -3, "y": -5}, {"x": -2, "y": -5}, {"x": -1, "y": -5}, {"x": -4, "y": -4}, {"x": -3, "y": -4}, {"x": -2, "y": -4}, {"x": -1, "y": -4}, {"x": -5, "y": -3}, {"x": -4, "y": -3}, {"x": -3, "y": -3}, {"x": -2, "y": -3}, {"x": -6, "y": -2}, {"x": -5, "y": -2}, {"x": -4, "y": -2}, {"x": -3, "y": -2}, {"x": -6, "y": -1}, {"x": -5, "y": -1}, {"x": -4, "y": -1}, {"x": -6, "y": 1}, {"x": -5, "y": 1}, {"x": -4, "y": 1}, {"x": 4, "y": 1}, {"x": 5, "y": 1}, {"x": 6, "y": 1}, {"x": -6, "y": 2}, {"x": -5, "y": 2}, {"x": -4, "y": 2}, {"x": -3, "y": 2}, {"x": 3, "y": 2}, {"x": 4, "y": 2}, {"x": 5, "y": 2}, {"x": 6, "y": 2}, {"x": -5, "y": 3}, {"x": -4, "y": 3}, {"x": -3, "y": 3}, {"x": -2, "y": 3}, {"x": 2, "y": 3}, {"x": 3, "y": 3}, {"x": 4, "y": 3}, {"x": 5, "y": 3}, {"x": -4, "y": 4}, {"x": -3, "y": 4}, {"x": -2, "y": 4}, {"x": -1, "y": 4}, {"x": 1, "y": 4}, {"x": 2, "y": 4}, {"x": 3, "y": 4}, {"x": 4, "y": 4}, {"x": -3, "y": 5}, {"x": -2, "y": 5}, {"x": -1, "y": 5}, {"x": 1, "y": 5}, {"x": 2, "y": 5}, {"x": 3, "y": 5}, {"x": -2, "y": 6}, {"x": -1, "y": 6}, {"x": 1, "y": 6}, {"x": 2, "y": 6}]}, "nuker": {"pos": [{"x": 1, "y": -5}]}, "lab": {"pos": [{"x": 2, "y": -5}, {"x": 3, "y": -5}, {"x": 2, "y": -4}, {"x": 3, "y": -4}, {"x": 4, "y": -4}, {"x": 4, "y": -3}, {"x": 5, "y": -3}, {"x": 3, "y": -2}, {"x": 4, "y": -2}, {"x": 5, "y": -2}]}, "spawn": {"pos": [{"x": 1, "y": -4}, {"x": 1, "y": -1}, {"x": 4, "y": -1}]}, "tower": {"pos": [{"x": 0, "y": -2}, {"x": -1, "y": -1}, {"x": -2, "y": 0}, {"x": 2, "y": 0}, {"x": 1, "y": 1}, {"x": 0, "y": 2}]}, "terminal": {"pos": [{"x": 0, "y": -1}]}, "observer": {"pos": [{"x": 5, "y": -1}]}, "storage": {"pos": [{"x": -1, "y": 0}]}, "factory": {"pos": [{"x": 1, "y": 0}]}, "powerSpawn": {"pos": [{"x": -1, "y": 1}]}, "link": {"pos": [{"x": 0, "y": 1}]}}}
 }

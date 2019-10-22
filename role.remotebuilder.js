@@ -4,9 +4,9 @@ module.exports = {
     run: function(creep) {
 
         if (creep.memory.targetRoom.toLowerCase() != creep.room.name.toLowerCase()) {
-            creep.moveTo(new RoomPosition(25, 25, creep.memory.targetRoom));
+            creep.travelTo(new RoomPosition(25, 25, creep.memory.targetRoom));
         } else {
-        	creep.moveTo(new RoomPosition(25, 25, creep.memory.targetRoom));
+        	creep.travelTo(new RoomPosition(25, 25, creep.memory.targetRoom));
             creep.memory.role = 'builder';
             creep.memory.home = creep.room.name;
         }

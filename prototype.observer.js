@@ -29,13 +29,13 @@ StructureObserver.prototype.makeList =
         if (homeroom.memory.nearby != undefined) {
             for (let ruum of homeroom.memory.nearby) {
                 // console.log(ruum)
-                if (Memory.roomData[ruum] != undefined && Memory.roomData[ruum].type == 'unexplored') {
+                if (Memory.rooms[ruum] != undefined && Memory.rooms[ruum].type == 'unexplored') {
                     homeroom.memory.observing.unshift(ruum);
-                } else if (Memory.roomData[ruum] != undefined && Memory.roomData[ruum].type != 'mine' && Memory.roomData[ruum].rescout <= Game.time) {
+                } else if (Memory.rooms[ruum] != undefined && Memory.rooms[ruum].type != 'mine' && Memory.rooms[ruum].rescout <= Game.time) {
                     homeroom.memory.observing.push(ruum);
                 }
             }
-            for (let ruum in Memory.roomData) {
+            for (let ruum in Memory.rooms) {
                 if (homeroom.memory.nearby.indexOf(ruum) < 0 && Game.map.getRoomLinearDistance(homeroom.name, ruum) <= 10) {
                     homeroom.memory.observing.unshift(ruum);
                 }

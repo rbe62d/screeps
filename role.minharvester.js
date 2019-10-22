@@ -19,11 +19,11 @@ module.exports = {
 
         if (container != undefined && container != null) {
             if (creep.pos.isEqualTo(container.pos)) {
-                if (_.sum(container.store) < container.storeCapacity && Game.time%5 == 0) {
+                if (container.store.getUsedCapacity() < container.store.getCapacity() && Game.time%5 == 0) {
                     creep.harvest(source);
                 }
             } else {
-                creep.moveTo(container);
+                creep.travelTo(container);
             }
         }
     }
