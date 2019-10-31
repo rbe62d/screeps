@@ -12,7 +12,7 @@ module.exports = {
                 creep.memory.home = creep.memory.targetRoom;
                 creep.memory.role = 'harvester';
             } else {
-                creep.runOtherRole('builder');
+                creep.runOtherRole('harvester');
             }
         }
     }

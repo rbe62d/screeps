@@ -9,6 +9,9 @@ module.exports = {
             // creep.runOtherRole('upgrader');
             creep.suicide();
         } else {
+            if (creep.memory.working == undefined) {
+                creep.memory.working = true;
+            }
             if(creep.memory.working && creep.store[RESOURCE_ENERGY] == 0) {
                 creep.memory.working = false;
                 creep.say('🔄 harvest');
@@ -20,16 +23,17 @@ module.exports = {
 
             if(creep.memory.working) {
                 let sources = creep.pos.findInRange(FIND_SOURCES, 1);
-                if (sources.length > 0) {
-                    creep.travelTo(new RoomPosition(creep.room.memory.anchor.x, creep.room.memory.anchor.y, creep.room.name), {visualizePathStyle: {stroke: '#ffffff'}});
-                } else if(targets.length > 0) {
-                    let closest = []
-                    if (storage != undefined && storage != null) {
-                        closest = storage;
-                    } else {
-                        closest = creep.pos.findClosestByRange(targets);
-                    }
+                
+                let closest = []
+                if (storage != undefined && storage != null) {
+                    closest = storage;
+                } else {
+                    closest = creep.pos.findClosestByRange(targets);
+                }
 
+                if (sources.length > 0) {
+                    creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffffff'}});
+                } else {
                     if(creep.build(closest) == ERR_NOT_IN_RANGE) {
                         creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffffff'}});
                     }

@@ -41,7 +41,7 @@ module.exports = {
                     creep.travelTo(container, {ignoreCreeps: true, stuckValue: 50 , visualizePathStyle: {stroke: '#ffffff'}});
                 }
             } else { 
-                if (_.sum(container.store) < container.storeCapacity) {
+                if (container != null && container.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
                     // creep.drop(RESOURCE_ENERGY)
                     creep.harvest(source);
                 }

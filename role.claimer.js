@@ -7,8 +7,14 @@ module.exports = {
         } else {
             let controller = creep.room.controller;
 
-            if(creep.claimController(controller) == ERR_NOT_IN_RANGE) {
-                creep.travelTo(controller, {visualizePathStyle: {stroke: '#ffffff'}});
+            // if(creep.claimController(controller) == ERR_NOT_IN_RANGE) {
+            //     creep.travelTo(controller, {visualizePathStyle: {stroke: '#ffffff'}});
+            // }
+            if (creep.pos.inRangeTo(controller, 1)) {
+            	let err = creep.claimController(controller)
+            	// console.log('trying to claim ' + creep.memory.targetRoom + ' err: ' + err)
+            } else {
+            	creep.travelTo(controller);
             }
 
             if (creep.room.controller.my) {

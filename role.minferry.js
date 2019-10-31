@@ -27,17 +27,47 @@ module.exports = {
                     }
                 })
 
+                let ruins = creep.room.find(FIND_RUINS, {
+                    filter: (r) => {
+                        return _.sum(r.store) - r.store[RESOURCE_ENERGY] > 0;
+                    }
+                })
+
                 if (dropped.length > 0) {
                     let closest = creep.pos.findClosestByPath(dropped);
 
-                    if(creep.pickup(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                        creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    if (!creep.pos.inRangeTo(closest, 1)) {
+                        creep.travelTo(closest);
+                    } else {
+                        for (const resourceType in closest.store) {
+                            if (resourceType != RESOURCE_ENERGY) {
+                                creep.withdraw(closest, resourceType);
+                            }
+                        }
                     }
                 } else if (tombs.length > 0) {
                     let closest = creep.pos.findClosestByPath(tombs);
 
-                    if(creep.withdraw(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                        creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    if (!creep.pos.inRangeTo(closest, 1)) {
+                        creep.travelTo(closest);
+                    } else {
+                        for (const resourceType in closest.store) {
+                            if (resourceType != RESOURCE_ENERGY) {
+                                creep.withdraw(closest, resourceType);
+                            }
+                        }
+                    }
+                } else if (ruins.length > 0) {
+                    let closest = creep.pos.findClosestByPath(ruins);
+
+                    if (!creep.pos.inRangeTo(closest, 1)) {
+                        creep.travelTo(closest);
+                    } else {
+                        for (const resourceType in closest.store) {
+                            if (resourceType != RESOURCE_ENERGY) {
+                                creep.withdraw(closest, resourceType);
+                            }
+                        }
                     }
                 } else {
                     let containers = creep.room.find(FIND_STRUCTURES, {

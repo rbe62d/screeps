@@ -19,7 +19,11 @@ Creep.prototype.runRole =
     function() {
         if (!this.spawning) {
             try {
-                roles[this.memory.role].run(this);
+                if (this.memory.role == undefined) {
+                    this.suicide()
+                } else {
+                    roles[this.memory.role].run(this);
+                }
             } catch (error) {
                 console.log('creep: ' + this.name + ' (room ' + this.room.name + ') errored ' + error);
                 // console.log('spawning ' + this.spawning)
@@ -49,35 +53,30 @@ Creep.prototype.getEnergy =
             }
         }
         else if(useContainer && conts.length > 0) {
-            // const closest = this.pos.findClosestByPath(conts);
-            // if(this.withdraw(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-            //     this.travelTo(closest, {visualizePathStyle: {stroke: '#ff0000'}});
-            // }
+            if (this.memory.contid == undefined || this.memory.contid == null || this.memory.contid == '') {
+                let containers = this.room.find(FIND_STRUCTURES, {
+                    filter: (s) => {
+                        return s.structureType == STRUCTURE_CONTAINER && s.store[RESOURCE_ENERGY] > 0;
+                    }
+                });
+                
+                if (containers.length > 0) {
+                    containers.sort((a,b) => b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY]);
+                    this.memory.contid = containers[0].id;
+                }
+            }
 
-            // let max = 0;
-            // //let closest;
-            // let set = [];
-            // for (let thing of conts) {
-            //     if (thing.store[RESOURCE_ENERGY] > max + 100 || _.sum(thing.store) == thing.storeCapacity) {
-            //         max = thing.store[RESOURCE_ENERGY];
-            //         // closest = thing;
-            //     }
-            // }
-            // for (let thing of conts) {
-            //     if (thing.store[RESOURCE_ENERGY] == max) {
-            //         set.push(thing);
-            //     }
-            // }
+            const closest = Game.getObjectById(this.memory.contid);
 
-            // let closest = this.pos.findClosestByPath(set);
-            
-
-            // conts.sort((a,b) => a.store[RESOURCE_ENERGY] > b.store[RESOURCE_ENERGY] ? 1 : (a.store[RESOURCE_ENERGY] < b.store[RESOURCE_ENERGY] ? -1 : 0));
-            conts.sort((a,b) => b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY]);
-            const closest = conts[0];
-
-            if(this.withdraw(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                this.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+            if (closest != null) {
+                if (this.pos.inRangeTo(closest, 1)) {
+                    this.withdraw(closest, RESOURCE_ENERGY);
+                    this.memory.contid = '';  
+                } else {
+                    this.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+                }
+            } else {
+                this.memory.contid = '';
             }
         }
         else if (useSource) {
@@ -96,20 +95,17 @@ Creep.prototype.getEnergy =
 
 Creep.prototype.depositEnergy =
     function () {
-        // console.log('in dep')
         let targets = this.room.find(FIND_MY_STRUCTURES, {
                 filter: (structure) => {
                     return (structure.structureType == STRUCTURE_EXTENSION ||
                         structure.structureType == STRUCTURE_SPAWN ||
                         structure.structureType == STRUCTURE_TOWER) && structure.store != undefined && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0; // structure.store[RESOURCE_ENERGY] < structure.store.getCapacity();
-                    // return structure.store[RESOURCE_ENERGY] < structure.store.getCapacity();
                 }
             });
 
-        // console.log('targets len: ' + targets.length)
 
         if(targets.length > 0) {
-            const closest = this.pos.findClosestByPath(targets);
+            const closest = this.pos.findClosestByRange(targets);
 
             if(this.transfer(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                 this.travelTo(closest, {visualizePathStyle: {stroke: '#ffffff'}});
@@ -134,7 +130,7 @@ Creep.prototype.fillExtensions =
             });
 
         if(targets.length > 0) {
-            const closest = this.pos.findClosestByPath(targets);
+            const closest = this.pos.findClosestByRange(targets);
 
             if(this.transfer(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                 this.travelTo(closest, {visualizePathStyle: {stroke: '#ffffff'}});

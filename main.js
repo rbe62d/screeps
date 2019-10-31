@@ -4,8 +4,32 @@ require('prototype.spawn');
 require('prototype.observer');
 require('prototype.room');
 require('Traveler');
+const profiler = require('screeps-profiler');
 
+profiler.enable();
 module.exports.loop = function () {
+
+profiler.wrap(function() {
+
+    // {
+    //     let bestscore = 0;
+    //     let bestroom = '';
+    //     for (let ruum in Memory.rooms) {
+    //         // console.log(ruum)
+    //         // if (Game.rooms[ruum].controller == undefined) {
+    //         //     console.log(ruum)
+    //         // }
+    //         if (Memory.rooms[ruum].anchor != undefined && Memory.rooms[ruum].anchor != false && Memory.rooms[ruum].anchor.score != undefined) {
+    //             if (Memory.rooms[ruum].anchor.score > bestscore) {
+    //                 bestscore = Memory.rooms[ruum].anchor.score;
+    //                 bestroom = ruum;
+    //             }
+    //         }
+
+    //     }
+    //     console.log('bestroom: ' + bestroom + ' ' + Memory.rooms[bestroom].anchor.x + ', ' + Memory.rooms[bestroom].anchor.y);
+    // }
+
     if (_.filter(Game.creeps).length == 0 && _.filter(Game.spawns).length == 1) {
         for (let spawnname in Game.spawns) {
             if (Game.spawns[spawnname].room.controller.level == 1 && Game.spawns[spawnname].room.controller.progress == 0) {
@@ -13,7 +37,9 @@ module.exports.loop = function () {
                     delete Memory[thing];
                 }
             }
-            Game.spawns[spawnname].room.memory.type = 'base';
+            let spawn = Game.spawns[spawnname];
+            spawn.room.memory.type = 'base';
+            spawn.room.memory.anchor = {x: spawn.pos.x - 1, y: spawn.pos.y + 1}
         }
     }
 
@@ -123,7 +149,7 @@ module.exports.loop = function () {
         Game.creeps[name].runRole();
     }
 
-    if (Memory.bases.length < Game.gcl.level && t%10 == 0 && Memory.expanding == '') {
+    if (Memory.bases.length < Game.gcl.level && t%500 == 0 && Memory.expanding == '') {
 
         let bestscore = 0;
         let bestroom = '';
@@ -142,7 +168,7 @@ module.exports.loop = function () {
                             }
                             return 1;
                         }});
-                    if (route.length <= 5 && Memory.rooms[roomname].anchor.score > bestscore) {
+                    if (route.length <= 7 && Memory.rooms[roomname].anchor.score > bestscore) {
                         bestscore = Memory.rooms[roomname].anchor.score;
                         bestroom = roomname;
                     }
@@ -181,6 +207,9 @@ module.exports.loop = function () {
             Memory.expanding = 'taken';
         }
     }
+
+});
+
 }
 
 module.exports.checker = function(temproomname) {

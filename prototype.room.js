@@ -29,12 +29,14 @@ Room.prototype.gatherIntel =
         let foundsources = this.find(FIND_SOURCES);
 
         // let sourceids = [];
-        Memory.rooms[this.name].sources = {}
-        for (let source of foundsources) {
-            // sourceids.push(source.id);
-            Memory.rooms[this.name].sources[source.id] = {}
-            Memory.rooms[this.name].sources[source.id].x = source.pos.x
-            Memory.rooms[this.name].sources[source.id].y = source.pos.y
+        if (foundsources.length) {
+            Memory.rooms[this.name].sources = {}
+            for (let source of foundsources) {
+                // sourceids.push(source.id);
+                Memory.rooms[this.name].sources[source.id] = {}
+                Memory.rooms[this.name].sources[source.id].x = source.pos.x
+                Memory.rooms[this.name].sources[source.id].y = source.pos.y
+            }
         }
 
         if (this.controller != undefined) {
@@ -43,7 +45,7 @@ Room.prototype.gatherIntel =
             Memory.rooms[this.name].controller.y = this.controller.pos.y
         }
 
-        Memory.rooms[this.name].name = this.name;
+        // Memory.rooms[this.name].name = this.name;
 
         if (enemies.length > 1) {
             Memory.rooms[this.name].type = 'enemy';
@@ -193,20 +195,20 @@ Room.prototype.buildController =
         // let rootx = this.pos.x - 1;
         // let rooty = this.pos.y + 1;
         
-        // if (this.memory == undefined || this.memory.anchor == undefined || this.memory.type == undefined) {
-        //     // this.memory.anchor = {'x': rootx, 'y': rooty};
-        //     // this.memory.type = 'base';
-        //     // console.log('set')
-        //     if (_.filter(Game.creeps).length == 0 && _.filter(Game.spawns).length == 1) {
-        //         for (let spawnname in Game.spawns) {
-        //             this.memory.anchor = {'x': Game.spawns[spawnname].pos.x - layout[1]['buildings']['spawn']['pos'][0].x,
-        //                                     'y': Game.spawns[spawnname].pos.y - layout[1]['buildings']['spawn']['pos'][0].y};
-        //             this.memory.type = 'base';
-        //         }
-        //     } else {
-        //         this.checker();
-        //     }
-        // }
+        if (this.memory == undefined || this.memory.anchor == undefined || this.memory.type == undefined) {
+            // this.memory.anchor = {'x': rootx, 'y': rooty};
+            // this.memory.type = 'base';
+            // console.log('set')
+            if (_.filter(Game.creeps).length == 0 && _.filter(Game.spawns).length == 1) {
+                for (let spawnname in Game.spawns) {
+                    this.memory.anchor = {'x': Game.spawns[spawnname].pos.x - layout[1]['buildings']['spawn']['pos'][0].x,
+                                            'y': Game.spawns[spawnname].pos.y - layout[1]['buildings']['spawn']['pos'][0].y};
+                    this.memory.type = 'base';
+                }
+            } else {
+                this.checker();
+            }
+        }
         let rootx = this.memory.anchor.x;
         let rooty = this.memory.anchor.y;
         if(Game.time%100 == 0 || force) {
@@ -263,7 +265,8 @@ Room.prototype.buildController =
                 }
             }
 
-            if (level >= 4) {
+            let csites = this.find(FIND_MY_CONSTRUCTION_SITES)
+            if (level >= 4 && csites.length == 0) {
                 let sources = this.find(FIND_SOURCES);
 
                 for (let i in sources) {
@@ -276,9 +279,9 @@ Room.prototype.buildController =
                     if (target != undefined && target != null) {
                         let path = [];
                         if (cont != undefined && cont != null) {
-                            path = source.pos.findPathTo(cont, {swampCost: 1.01, ignoreCreeps: true});
+                            path = source.pos.findPathTo(cont, {swampCost: 3, ignoreCreeps: true});
                         } else {
-                            path = source.pos.findPathTo(target, {swampCost: 1.01, ignoreCreeps: true});
+                            path = source.pos.findPathTo(target, {swampCost: 3, ignoreCreeps: true});
                         }
 
                         for (let square of path) {
@@ -293,7 +296,7 @@ Room.prototype.buildController =
                 let target = controller.pos.findClosestByPath(roadAnchors, {ignoreCreeps: true});
 
                 if (target != null && target != undefined) {
-                    let path = controller.pos.findPathTo(target, {swampCost: 1.01, ignoreCreeps: true});
+                    let path = controller.pos.findPathTo(target, {swampCost: 3, ignoreCreeps: true});
 
                     for (let square of path) {
                         let temppos = new RoomPosition(square['x'], square['y'], this.name);
@@ -301,7 +304,7 @@ Room.prototype.buildController =
                     }
                 }
             }
-            if (level >= 6) {
+            if (level >= 6 && csites.length == 0) {
                 let mins = this.find(FIND_MINERALS)[0];
                 let extractor = this.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_EXTRACTOR})[0];
 
@@ -311,7 +314,7 @@ Room.prototype.buildController =
 
                 let target = mins.pos.findClosestByPath(roadAnchors, {ignoreCreeps: true});
                 if (target != null && target != undefined) {
-                    let path = mins.pos.findPathTo(target, {swampCost: 1.01, ignoreCreeps: true});
+                    let path = mins.pos.findPathTo(target, {swampCost: 3, ignoreCreeps: true});
 
                     for (let square of path) {
                         let temppos = new RoomPosition(square['x'], square['y'], this.name);

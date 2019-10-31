@@ -45,6 +45,11 @@ module.exports = {
 
             if (creep.pos.x == 0 || creep.pos.x == 49 || creep.pos.y == 0 || creep.pos.y == 49) {
                 let err = creep.travelTo(new RoomPosition(25, 25, creep.memory.explore[0]), {ignoreRoads: true, swampCost: 1});
+                if (err == ERR_INVALID_ARGS) {
+                    // creep.say('fuck')
+                    creep.memory.explore.shift();
+                }
+                // console.log('scout err: ' + err)
                 creep.room.gatherIntel(creep.memory.home);
 
                 let index = creep.memory.explore.indexOf(creep.room.name);
@@ -56,9 +61,17 @@ module.exports = {
             } else if (creep.memory.explore.length > 0 && creep.room.name != creep.memory.explore[0]) {
                 let err = creep.travelTo(new RoomPosition(25, 25, creep.memory.explore[0]), {ignoreRoads: true, swampCost: 1});
 
-                if (err == ERR_NO_PATH) {
-                    creep.say('fuck')
+                if (err == ERR_INVALID_ARGS) {
+                    // creep.say('fuck1')
+                    creep.memory.explore.shift();
                 }
+                // console.log('scout err: ' + err)
+                // if (err == ERR_NO_PATH) {
+                //     creep.say('fuck')
+                // }
+                // if (err == ERR_INVALID_ARGS) {
+                //     creep.say('fuck1')
+                // }
             } else {
                 creep.move(new RoomPosition(25, 25, creep.memory.explore[0]), {ignoreRoads: true, swampCost: 1});
                 creep.memory.explore.shift();

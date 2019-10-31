@@ -53,7 +53,7 @@ StructureSpawn.prototype.spawnController =
             name = 'harvester' + Game.time;
             mem['role'] = 'harvester';
             body = this.genWorker();
-        } else if (harvesters.length + contharvesters.length == 0 && room.energyAvailable < 700) {
+        } else if (harvesters.length + contharvesters.length == 0 && room.energyAvailable < 700 && (emans.length < 1 || (room.storage == undefined || room.storage.store[RESOURCE_ENERGY] < 700))) {
             name = 'harvester' + Game.time;
             mem['role'] = 'harvester';
             body = this.genWorker();
@@ -94,20 +94,24 @@ StructureSpawn.prototype.spawnController =
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
-        } else if((room.controller.level < 4 || room.storage == undefined) && upgraders.length < 6) {
+        } else if((room.controller.level < 4 || room.storage == undefined) && upgraders.length < 6 && csites.length == 0) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
-        } else if(room.controller.level < 8 && upgraders.length < 3) {
+        } else if(room.controller.level < 8 && upgraders.length < 2 && csites.length == 0) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
+            body = this.genWorker();
+        } else if(csites.length > 0 && room.storage == undefined && builders.length < 3) {
+            name = 'builder' + Game.time;
+            mem['role'] = 'builder';
             body = this.genWorker();
         } else if(csites.length > 0 && builders.length < 1) {
             name = 'builder' + Game.time;
             mem['role'] = 'builder';
             body = this.genWorker();
         // } else if (scouts.length < 1) {
-        } else if (room.controller.level >= 6 && mins.mineralAmount > 0 && extractor != undefined && mincont != undefined && minharvesters.length < 1) {
+        } else if (room.controller.level >= 6 && room.energyAvailable >= 2100 && mins.mineralAmount > 0 && extractor != undefined && mincont != undefined && minharvesters.length < 1) {
             name = 'minharvester' + Game.time;
             mem['role'] = 'minharvester';
             body = this.genMinHarvester();
@@ -218,7 +222,7 @@ StructureSpawn.prototype.genWorker =
 StructureSpawn.prototype.genFerry =
     function() {
         let body = [];
-        if (this.room.controller.level < 4) {
+        if (this.room.controller.level < 4 || this.room.storage == undefined) {
             let numberOfParts = Math.floor(this.room.energyAvailable / 100);
             numberOfParts = Math.min(numberOfParts, Math.floor(50 / 2));
             for (let i = 0; i < numberOfParts; i++) {
