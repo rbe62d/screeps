@@ -1,4 +1,4 @@
-require('prototype.room');
+// require('prototype.room');
 
 StructureObserver.prototype.collect = 
     function() {

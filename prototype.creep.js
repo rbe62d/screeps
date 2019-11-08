@@ -13,6 +13,8 @@ var roles = {
     minharvester: require('role.minharvester'),
     minferry: require('role.minferry'),
     settler: require('role.settler'),
+    middleman: require('role.middleman'),
+    attacker: require('role.attacker'),
 }
 
 Creep.prototype.runRole =
@@ -45,14 +47,17 @@ Creep.prototype.getEnergy =
         });
 
         let storage = this.room.storage;
+        let terminal = this.room.terminal;
 
-        if(useContainer && storage != undefined && storage.store[RESOURCE_ENERGY] >= this.store.getCapacity())
-        {
+        if (useContainer && terminal != undefined && terminal.store[RESOURCE_ENERGY] > 0 && (storage == undefined || terminal.store[RESOURCE_ENERGY] > storage.store[RESOURCE_ENERGY])) {
+            if(this.withdraw(terminal, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                this.travelTo(terminal, {visualizePathStyle: {stroke: '#ff0000'}});
+            }
+        } else if(useContainer && storage != undefined && storage.store[RESOURCE_ENERGY] >= this.store.getCapacity()) {
             if(this.withdraw(storage, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                 this.travelTo(storage, {visualizePathStyle: {stroke: '#ff0000'}});
             }
-        }
-        else if(useContainer && conts.length > 0) {
+        } else if(useContainer && conts.length > 0) {
             if (this.memory.contid == undefined || this.memory.contid == null || this.memory.contid == '') {
                 let containers = this.room.find(FIND_STRUCTURES, {
                     filter: (s) => {
@@ -88,7 +93,7 @@ Creep.prototype.getEnergy =
             const closest = this.pos.findClosestByPath(sources);
 
             if(this.harvest(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                this.travelTo(closest, {visualizePathStyle: {stroke: '#ffff00'}});
+                this.travelTo(closest, {maxRooms: 1});
             }
         }
     };
@@ -123,17 +128,22 @@ Creep.prototype.depositEnergy =
 
 Creep.prototype.fillExtensions =
     function () {
-        let targets = this.room.find(FIND_MY_STRUCTURES, {
-                filter: (s) => {
-                    return (s.structureType == STRUCTURE_SPAWN || s.structureType == STRUCTURE_EXTENSION) && s.energy < s.energyCapacity;
-                }
-            });
+        const targets = this.room.getEnergyStructures(true);
 
-        if(targets.length > 0) {
-            const closest = this.pos.findClosestByRange(targets);
+        if (targets.length == 0) {
+            console.log('WHY ARE YOU HEAR!')
+        } else if (this.pos.isNearTo(targets[0])) {
+            this.transfer(targets[0], RESOURCE_ENERGY);
 
-            if(this.transfer(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                this.travelTo(closest, {visualizePathStyle: {stroke: '#ffffff'}});
-            }
+            // if (targets.length > 1) {
+            //     console.log(this.name + ': travelTo next');
+            //                 this.travelTo(targets[1]);
+            // }
+        } else {
+                // console.log(this.name + ': travelTo current');
+            
+            this.travelTo(targets[0], {range: 1, maxOps: 100, freshMatrix: false, maxRooms: 1});
+
+            // this.moveTo(targets[0])
         }
     };

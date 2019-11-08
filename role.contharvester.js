@@ -14,11 +14,11 @@ module.exports = {
         }
 
         if(creep != undefined && creep.store != undefined && creep.store[RESOURCE_ENERGY] == 0) {
-            // let targets = source.pos.findInRange(FIND_CONSTRUCTION_SITES, 1);
+            let targets = source.pos.findInRange(FIND_CONSTRUCTION_SITES, 1);
 
             if (container == null) {
                 if(creep.harvest(source) == ERR_NOT_IN_RANGE) {
-                    creep.travelTo(source, {ignoreCreeps: true, stuckValue: 50 , visualizePathStyle: {stroke: '#ffaa00'}});
+                    creep.moveTo(source, {ignoreCreeps: true, visualizePathStyle: {stroke: '#ffaa00'}});
                 } else if (creep.pos.findInRange(FIND_SOURCES, 1).length != 0) {
                     creep.room.createConstructionSite(creep.pos, STRUCTURE_CONTAINER)
                 }

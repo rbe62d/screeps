@@ -22,7 +22,7 @@ module.exports = {
                 let extract = source.pos.findInRange(FIND_STRUCTURES, 1, {
                     filter: s => {return s.structureType == STRUCTURE_EXTRACTOR}
                 })[0];
-                if (container.store[RESOURCE_ENERGY] < container.store.getCapacity() && extract.cooldown == 0) {
+                if (container.store.getUsedCapacity() < container.store.getCapacity() && extract.cooldown == 0) {
                     // console.log('hey minh ' + Game.time)
                     creep.harvest(source);
                 }

@@ -34,19 +34,20 @@ module.exports = {
                 })
 
                 if (dropped.length > 0) {
-                    let closest = creep.pos.findClosestByPath(dropped);
+                    let closest = creep.pos.findClosestByRange(dropped);
 
                     if (!creep.pos.inRangeTo(closest, 1)) {
                         creep.travelTo(closest);
                     } else {
-                        for (const resourceType in closest.store) {
-                            if (resourceType != RESOURCE_ENERGY) {
-                                creep.withdraw(closest, resourceType);
-                            }
-                        }
+                        // for (const resourceType in closest.store) {
+                        //     if (resourceType != RESOURCE_ENERGY) {
+                        //         creep.pickup(closest, resourceType);
+                        //     }
+                        // }
+                        creep.pickup(closest);
                     }
                 } else if (tombs.length > 0) {
-                    let closest = creep.pos.findClosestByPath(tombs);
+                    let closest = creep.pos.findClosestByRange(tombs);
 
                     if (!creep.pos.inRangeTo(closest, 1)) {
                         creep.travelTo(closest);
@@ -58,7 +59,7 @@ module.exports = {
                         }
                     }
                 } else if (ruins.length > 0) {
-                    let closest = creep.pos.findClosestByPath(ruins);
+                    let closest = creep.pos.findClosestByRange(ruins);
 
                     if (!creep.pos.inRangeTo(closest, 1)) {
                         creep.travelTo(closest);
@@ -72,12 +73,12 @@ module.exports = {
                 } else {
                     let containers = creep.room.find(FIND_STRUCTURES, {
                         filter: (s) => {
-                            return s.structureType == STRUCTURE_CONTAINER && _.sum(s.store) - s.store[RESOURCE_ENERGY] > 0;//creep.store.getCapacity();
+                            return s.structureType == STRUCTURE_CONTAINER && s.store.getUsedCapacity() - s.store[RESOURCE_ENERGY] > 0;//creep.store.getCapacity();
                         }
                     });
                     
                     if (containers.length > 0) {
-                        let closest = creep.pos.findClosestByPath(containers);
+                        let closest = creep.pos.findClosestByRange(containers);
 
                         if (!creep.pos.inRangeTo(closest, 1)) {
                             creep.travelTo(closest);

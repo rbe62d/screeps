@@ -6,13 +6,14 @@ StructureSpawn.prototype.spawnController =
 
         let harvesters = _.filter(creepsList, c => c.memory.role == 'harvester');
         let contharvesters = _.filter(creepsList, c => c.memory.role == 'contharvester');
-        let ferrys = _.filter(creepsList, c => c.memory.role == 'ferry');
+        let ferrys = _.filter(creepsList, c => c.memory.role == 'ferry' && (c.spawning || 3*c.body.length < c.ticksToLive));
         let upgraders = _.filter(creepsList, c => c.memory.role == 'upgrader');
         let builders = _.filter(creepsList, c => c.memory.role == 'builder');
         let emans = _.filter(creepsList, c => c.memory.role == 'eman');
         let scouts = _.filter(creepsList, c => c.memory.role == 'scout');
         let remotedestroys = _.filter(creepsList, c => c.memory.role == 'remotedestroyer');
         let minferrys = _.filter(creepsList, c => c.memory.role == 'minferry');
+        let middlemen = _.filter(creepsList, c => c.memory.role == 'middleman');
         let minharvesters = _.filter(creepsList, c => c.memory.role == 'minharvester');
 
         let csites = room.find(FIND_MY_CONSTRUCTION_SITES);
@@ -69,7 +70,7 @@ StructureSpawn.prototype.spawnController =
             name = 'ferry' + Game.time;
             mem['role'] = 'ferry';
             body = this.genFerry();
-        } else if(ferrys.length < contharvesters.length && room.energyCapacityAvailable < 1000) {
+        } else if(ferrys.length < contharvesters.length && room.energyCapacityAvailable < 1500) {
             name = 'ferry' + Game.time;
             mem['role'] = 'ferry';
             body = this.genFerry();
@@ -90,6 +91,10 @@ StructureSpawn.prototype.spawnController =
                     mem['sourceID'] = source.id;
                 }
             }
+        } else if (this.name.substring(0,6).toLowerCase() == 'spawn1' && room.controller.level >= 5 && middlemen.length < 1) {
+        	name = 'middleman' + Game.time;
+        	mem['role'] = 'middleman';
+        	body = [CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY];
         } else if(room.controller.level == 8 && upgraders.length < 1) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
@@ -119,7 +124,7 @@ StructureSpawn.prototype.spawnController =
             name = 'minferry' + Game.time;
             mem['role'] = 'minferry';
             body = this.genFerry();
-        } else if (scouts.length < 2 && room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_OBSERVER}).length == 0) {
+        } else if (scouts.length < 1 && room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_OBSERVER}).length == 0) {
             name = 'scout' + Game.time;
             mem['role'] = 'scout';
             body = [MOVE];
@@ -150,6 +155,13 @@ StructureSpawn.prototype.spawnController =
             body = this.genDestroyer();
 
             room.memory.remotedestroy = "";
+        } else if (room.name == 'W5N1' && Memory.attackrichie != undefined && Memory.attackrichie != false) {
+        	name = 'attacker' + Game.time;
+			mem['role'] = 'attacker';
+            mem['targetRoom'] = 'W4N8';
+            body = [MOVE,MOVE,MOVE,MOVE,MOVE,ATTACK];     
+
+            Memory.attackrichie = false;
         }
 
         // else if(room.memory.claim != undefined && room.memory.claim != "") {
@@ -178,16 +190,25 @@ StructureSpawn.prototype.spawnController =
         //     room.memory.remoteupgrade = "";
         // }
 
+         // && this.spawnCreep(body, name, {dryRun: true})
         if (!this.spawning && name != undefined && body.length != 0) {
-            let energyOrder = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_EXTENSION && (Math.abs(this.room.memory.anchor.x - s.pos.x) + Math.abs(this.room.memory.anchor.y - s.pos.y) <= 5)});
+            // let energyOrder = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_EXTENSION && (Math.abs(this.room.memory.anchor.x - s.pos.x) + Math.abs(this.room.memory.anchor.y - s.pos.y) <= 5)});
 
-            let moreExt = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_EXTENSION && (Math.abs(this.room.memory.anchor.x - s.pos.x) + Math.abs(this.room.memory.anchor.y - s.pos.y) > 5)})
-            energyOrder = energyOrder.concat(moreExt);
-            let spawns = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_SPAWN})
-            energyOrder = energyOrder.concat(spawns);
+            // let moreExt = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_EXTENSION && (Math.abs(this.room.memory.anchor.x - s.pos.x) + Math.abs(this.room.memory.anchor.y - s.pos.y) > 5)})
+            // energyOrder = energyOrder.concat(moreExt);
+            // let spawns = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_SPAWN})
+            // energyOrder = energyOrder.concat(spawns);
+            const energyOrder = this.room.getEnergyStructures();
 
-            if (this.name.substring(0,6) == 'spawn1') {
-                this. spawnCreep(body, name, {directions: [TOP, TOP_RIGHT, RIGHT], memory: mem, energyStructures: energyOrder})
+            if (this.name.substring(0,6).toLowerCase() == 'spawn1') {
+            	let dirs = [TOP, TOP_RIGHT, RIGHT]
+                if (mem['role'] == 'middleman') {
+                	dirs = [BOTTOM_LEFT];
+                }
+                // else {
+                	// this.spawnCreep(body, name, {directions: [TOP, TOP_RIGHT, RIGHT], memory: mem, energyStructures: energyOrder})
+                // }
+                this.spawnCreep(body, name, {directions: dirs, memory: mem, energyStructures: energyOrder})
             } else {
                 this.spawnCreep(body, name, {memory: mem, energyStructures: energyOrder})
             }
@@ -222,7 +243,8 @@ StructureSpawn.prototype.genWorker =
 StructureSpawn.prototype.genFerry =
     function() {
         let body = [];
-        if (this.room.controller.level < 4 || this.room.storage == undefined) {
+        let roads = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_ROAD})
+        if (roads.length < 72) {
             let numberOfParts = Math.floor(this.room.energyAvailable / 100);
             numberOfParts = Math.min(numberOfParts, Math.floor(50 / 2));
             for (let i = 0; i < numberOfParts; i++) {

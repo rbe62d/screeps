@@ -3,6 +3,7 @@ require('prototype.tower');
 require('prototype.spawn');
 require('prototype.observer');
 require('prototype.room');
+require('prototype.terminal');
 require('Traveler');
 const profiler = require('screeps-profiler');
 
@@ -57,6 +58,12 @@ profiler.wrap(function() {
                 delete Memory.rooms[ruum];
             }
         }
+        for (let roomname in Memory.bases) {
+            if (Game.rooms[roomname] == undefined || !Game.rooms[roomname].controller.my) {
+                let index = Memory.bases.indexOf(roomname);
+                Memory.bases.splice(index, 1);
+            }
+        }
     }
 
     for(let name in Memory.creeps) {
@@ -65,20 +72,8 @@ profiler.wrap(function() {
         }
     }
 
-    if (t%1500 == 0) {
-        // Game.rooms.W5N3.memory.remotebuild = "w5n1"
-        // Game.rooms.W7N2.memory.remotebuild = "w6n1"
-        // console.log("remote w7n3")
-    } else if ((t+500)%1500  == 0) {
-        // Game.rooms.W5N3.memory.remotebuild = "w5n1"
-        // Game.rooms.W7N2.memory.remotebuild = "w6n1"
-        // Game.rooms.W8N3.memory.remotebuild = "w8n2"
-        // console.log("remote w7n4")
-    } else if ((t+1000)%1500  == 0) {
-        // Game.rooms.W5N3.memory.remotebuild = "w5n1"
-        // Game.rooms.W7N2.memory.remotebuild = "w6n1"
-        // Game.rooms.W8N3.memory.remotebuild = "w7n4"
-        // console.log("remote w7n4")
+    if (t%6000 == 0) {
+        Memory.attackrichie = true
     }
 
     for (let roomname in Game.rooms) {
@@ -97,7 +92,10 @@ profiler.wrap(function() {
 
     for (let spawnName in Game.spawns) {
         try {
-            Game.spawns[spawnName].spawnController();
+            let spawn = Game.spawns[spawnName];
+            if (!spawn.spawning) {
+                spawn.spawnController();
+            }
         } catch (error) {
             console.log('Spawn: ' + spawnName + ' spawn controller errored: ' + error);
         }
@@ -109,7 +107,7 @@ profiler.wrap(function() {
             // Game.rooms[roomname].gatherIntel(roomname);
         }
 
-        let name = spawnName.substring(0,6);
+        let name = spawnName.substring(0,6).toLowerCase();
         if (name == 'spawn1') {
             if (Game.rooms[roomname].memory.nearby.indexOf(roomname) < 0 || Memory.rooms[roomname] == undefined) {
                 try {
@@ -127,7 +125,7 @@ profiler.wrap(function() {
 
     }
 
-    var towers = _.filter(Game.structures, s => s.structureType == STRUCTURE_TOWER);
+    let towers = _.filter(Game.structures, s => s.structureType == STRUCTURE_TOWER);
     for (let tower of towers) {
         try {
             tower.runRole();
@@ -136,7 +134,7 @@ profiler.wrap(function() {
         }
     }
 
-    var observers = _.filter(Game.structures, s => s.structureType == STRUCTURE_OBSERVER);
+    let observers = _.filter(Game.structures, s => s.structureType == STRUCTURE_OBSERVER);
     for (let observer of observers) {
         try {
             observer.runRole();
@@ -145,18 +143,54 @@ profiler.wrap(function() {
         }
     }
 
+    let terminals = _.filter(Game.structures, s => s.structureType == STRUCTURE_TERMINAL);
+    for (let terminal of terminals) {
+        if (t%20 != 3) {
+            break;
+        }
+
+        try {
+            terminal.runRole()
+        } catch (error) {
+            console.log('terminal: ' + terminal.room.name + ' done broke like ' + error);
+        }
+    }
+
+
+    // Memory.temp = Memory.bases;
+    // for (let roomname of Memory.temp) {
+    //     if (t%10 == 0) {
+    //         let ruum = Game.rooms[roomname];
+    //         if (ruum == undefined || !ruum.controller.my) {
+    //             let index = Memory.temp.indexOf(roomname);
+    //             Memory.temp.splice(index, 1);
+    //         } else {
+
+    //             // console.log(roomname)
+    //         }
+    //     }
+    // }
+
     for(let name in Game.creeps) {
         Game.creeps[name].runRole();
     }
 
-    if (Memory.bases.length < Game.gcl.level && t%500 == 0 && Memory.expanding == '') {
+    if (Memory.bases.length == Game.gcl.level && t%500 == 2) {
+        Memory.expanding = '';
+
+        for (let base of Memory.bases) {
+            Memory.rooms[base].expand = '';
+        }
+    }
+
+    if (Memory.bases.length < Game.gcl.level && t%500 == 1 && Memory.expanding == '') {
 
         let bestscore = 0;
         let bestroom = '';
         for (let roomname in Memory.rooms) {
             if (Memory.rooms[roomname].type == 'explored' && Memory.rooms[roomname].anchor != false) {
                 let canExpand = _.filter(Memory.bases, function(s) {
-                    return Game.rooms[s].controller.level >= 6 && Memory.rooms[s].expand == '';
+                    return Game.rooms[s].controller.level >= 5 && Memory.rooms[s].expand == '';
                 })
                 for (let th of canExpand) {
                     const route = Game.map.findRoute(th, roomname, {
@@ -182,7 +216,7 @@ profiler.wrap(function() {
 
     if (Memory.expanding != '' && Memory.expanding != 'taken') {
         let canExpand = _.filter(Memory.bases, function(s) {
-            return Game.rooms[s].controller.level >= 6 && Memory.rooms[s].expand == '';
+            return Game.rooms[s].controller.level >= 5 && Memory.rooms[s].expand == '';
         })
         let bestscore = 100;
         let bestroom = '';
@@ -208,6 +242,24 @@ profiler.wrap(function() {
         }
     }
 
+    // if (Memory.temp != undefined && Memory.temp._bits != undefined) {
+    //     let matrix = Memory.temp._bits;
+    //     let room = Game.rooms['W5N1'];
+
+    //     for (let i in matrix) {
+    //         let x = Math.floor(i/50);
+    //         let y = i%50;
+
+    //         if (matrix[i] == 0) {
+    //            room.visual.circle(x,y, {stroke: 'green'})
+
+    //         } else if (matrix[i] == 255) {
+    //            room.visual.circle(x,y, {stroke: 'red'})
+    //         } else {
+    //            room.visual.circle(x,y, {stroke: 'blue'})
+    //         }
+    //     }
+    // }
 });
 
 }
@@ -245,5 +297,45 @@ module.exports.checker = function(temproomname) {
 
     for (let coord of list) {
         new RoomVisual(roomname).circle(coord.x, coord.y);
+    }
+}
+
+module.exports.totalRemoveRoom = function(roomname) {
+    if (Game.rooms[roomname] == undefined || !Game.rooms[roomname].controller.my) {
+
+    } else {
+        let room = Game.rooms[roomname];
+        
+        delete Memory.rooms[roomname];
+        room.gatherIntel();
+
+        let buildings = room.find(FIND_STRUCTURES);
+
+        for (let building of buildings) {
+            building.destroy();
+        }
+
+
+        room.controller.unclaim();
+    }
+}
+
+module.exports.visMatrix = function () {
+    if (Memory.temp != undefined && Memory.temp._bits != undefined) {
+        let matrix = Memory.temp._bits;
+        let room = Game.rooms['W5N1'];
+
+        for (let i in matrix) {
+            let x = Math.floor(i/50);
+            let y = i%50;
+
+            if (matrix[i] == 0) {
+
+            } else if (matrix[i] == 255) {
+               room.visual.circle(x,y, {stroke: 'red'})
+            } else {
+               room.visual.circle(x,y, {stroke: 'blue'})
+            }
+        }
     }
 }

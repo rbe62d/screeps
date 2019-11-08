@@ -3,7 +3,8 @@ module.exports = {
     /** @param {Creep} creep **/
     run: function(creep) {
         // creep.suicide()
-        let energyAmount = 50000;
+        let storageEnergyAmount = 50000;
+        let termEnergyAmount = 50000;
 
         let storage = creep.room.storage;
         let terminal = creep.room.terminal;
@@ -20,7 +21,15 @@ module.exports = {
             // console.log(creep.store.getUsedCapacity())
         }
 
-        if (terminal != undefined && storage != undefined && terminal.store[RESOURCE_ENERGY] < energyAmount) {
+        if (terminal != undefined && storage != undefined && terminal.store[RESOURCE_ENERGY] >= 0 && (storage.store[RESOURCE_ENERGY] < storageEnergyAmount || storage.store[RESOURCE_ENERGY] < terminal.store[RESOURCE_ENERGY])) {
+            if (creep.store.getUsedCapacity() > 0) {
+                for (let resource in creep.store) {
+                    creep.transfer(storage, resource);
+                }
+            } else {
+                creep.withdraw(terminal, RESOURCE_ENERGY);
+            }
+        } else if (terminal != undefined && storage != undefined && terminal.store[RESOURCE_ENERGY] < termEnergyAmount) {
             let randomPropertyFunc = function (obj) {
                     let keys = Object.keys(obj)
                     return keys[ keys.length * Math.random() << 0];
@@ -48,9 +57,7 @@ module.exports = {
                 // console.log(creep.room.name + ': random randomPropertyFunc: ' + randResource)
             } else if (terminal.store.getFreeCapacity() == 0 && creep.store.getFreeCapacity() == 0) {
                 for (let resource in creep.store) {
-                    // if (resource != RESOURCE_ENERGY) {
-                    // }
-                        creep.transfer(storage, resource);
+                    creep.transfer(storage, resource);
                 }
 
 
@@ -58,9 +65,9 @@ module.exports = {
                 // console.log(creep.room.name + ': random randomPropertyFunc: ' + randResource)
             } else if (creep.store[RESOURCE_ENERGY] > 0) {
                 creep.transfer(terminal, RESOURCE_ENERGY);
-            } else {
+            } else if (storage.store[RESOURCE_ENERGY] > storageEnergyAmount + creep.store.getCapacity()) {
                 // console.log('else withdraw: ' + (storage.store[RESOURCE_ENERGY]) + ' , ' + Math.min(creep.store.getFreeCapacity(), 20000 - terminal.store[RESOURCE_ENERGY], storage.store[RESOURCE_ENERGY]))
-                creep.withdraw(storage, RESOURCE_ENERGY, Math.min(creep.store.getFreeCapacity(), energyAmount - terminal.store[RESOURCE_ENERGY], storage.store[RESOURCE_ENERGY]));
+                creep.withdraw(storage, RESOURCE_ENERGY, Math.min(creep.store.getFreeCapacity(), termEnergyAmount - terminal.store[RESOURCE_ENERGY], storage.store[RESOURCE_ENERGY]));
             }
             // if (creep.store.getUsedCapacity() - creep.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
 

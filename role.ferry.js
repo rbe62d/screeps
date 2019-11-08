@@ -31,19 +31,19 @@ module.exports = {
                 let closest = creep.pos.findClosestByRange(dropped);
 
                 if(creep.pickup(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                    creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    creep.travelTo(closest, {swampCost: 2, visualizePathStyle: {stroke: '#ffaa00'}});
                 }
             } else if (tombs.length > 0) {
                 let closest = creep.pos.findClosestByRange(tombs);
 
                 if(creep.withdraw(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                    creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    creep.travelTo(closest, {swampCost: 2, visualizePathStyle: {stroke: '#ffaa00'}});
                 }
             } else if (ruins.length > 0) {
                 let closest = creep.pos.findClosestByRange(ruins);
 
                 if(creep.withdraw(closest, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                    creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    creep.travelTo(closest, {swampCost: 2, visualizePathStyle: {stroke: '#ffaa00'}});
                 }
             } else {
                     // console.log('uh ' + creep.name + ' ' + creep.room.name)
@@ -67,7 +67,7 @@ module.exports = {
                         creep.withdraw(closest, RESOURCE_ENERGY);
                         creep.memory.contid = '';  
                     } else {
-                        creep.travelTo(closest, {visualizePathStyle: {stroke: '#ffaa00'}});
+                        creep.travelTo(closest, {swampCost: 2, visualizePathStyle: {stroke: '#ffaa00'}});
                     }
                 } else {
                     creep.memory.contid = '';
@@ -77,7 +77,7 @@ module.exports = {
         else {
             let store = creep.room.storage;
             if(store != undefined) {
-                if (store.store[RESOURCE_ENERGY] < 0.5 * store.storeCapacity) {
+                if (store.store[RESOURCE_ENERGY] < 0.8 * store.storeCapacity) {
                     if (creep.transfer(store, RESOURCE_ENERGY) != OK) {
                         creep.travelTo(store, {visualizePathStyle: {stroke: '#ffffff'}});
                     }
