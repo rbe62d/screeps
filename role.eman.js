@@ -14,15 +14,20 @@ module.exports = {
         	8: 48,
         }
 
-        let options = {range: 1, maxOps: 100, freshMatrix: false, maxRooms: 1}
+        let options = {range: 1, restrictDistance: 16}
         if (Game.time%100 == 0) {
-            options['freshMatrix'] = true;
+            options.freshMatrix = true;
         }
+        // if (creep.room.name == 'E1N5') {
+        //     options = {freshMatrix: true};
+        // }
 
-        if (creep.body.length >= bodysize[creep.room.controller.level] && creep.ticksToLive < 200 && creep.room.energyAvailable >= 1000 && creep.room.storage != undefined && creep.room.storage.store[RESOURCE_ENERGY] > 30000) {
-            // creep.runOtherRole('renew');
-            creep.memory.state = 'renew';
-        }
+
+        // if (Game.time - creep.name.substr(4) < 50000 && creep.body.length >= bodysize[creep.room.controller.level] && creep.ticksToLive < 200 && creep.room.energyAvailable >= 1000 && creep.room.storage != undefined && creep.room.storage.store[RESOURCE_ENERGY] > 30000) {
+        //     // creep.runOtherRole('renew');
+        //     creep.memory.state = 'renew';
+        // }
+        
 
         let spawns = creep.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_SPAWN && !s.spawning});
         if (creep.ticksToLive > 1400 || creep.room.energyAvailable < 1000 || spawns.length == 0) {
@@ -87,7 +92,6 @@ module.exports = {
                             creep.travelTo(room.storage, options);
                         }
                     } else if (!creep.pos.isEqualTo(waitpos)) {
-                        options['range'] = 0;
                         creep.travelTo(waitpos, options);
                     }
                 }
@@ -110,8 +114,9 @@ module.exports = {
                             creep.travelTo(room.storage, options);
                         }
                     } else if (!creep.pos.isEqualTo(waitpos)) {
-                        options['range'] = 0;
+                        options.range = 0;
                         creep.travelTo(waitpos, options);
+                        // creep.travelTo(waitpos);
                     }
                 }
             } else if (creep.store[RESOURCE_ENERGY] > 0) {
@@ -120,7 +125,7 @@ module.exports = {
                 }
             } else {
                 if (!creep.pos.isEqualTo(waitpos)) {
-                    options['range'] = 0;
+                    options.range = 0;
                     creep.travelTo(waitpos, options);
                     // creep.travelTo(waitpos, {freshMatrix: true});
                 }

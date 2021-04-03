@@ -6,8 +6,8 @@ module.exports = {
         let targets = creep.room.find(FIND_CONSTRUCTION_SITES);
         let storage = creep.room.find(FIND_CONSTRUCTION_SITES, {filter: s => s.structureType == STRUCTURE_STORAGE})[0];
         if (targets.length == 0) {
-            // creep.runOtherRole('upgrader');
-            creep.suicide();
+            creep.runOtherRole('upgrader');
+            // creep.suicide();
         } else {
             if (creep.memory.working == undefined) {
                 creep.memory.working = true;

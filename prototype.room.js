@@ -26,17 +26,27 @@ Room.prototype.gatherIntel =
         let enemies = this.find(FIND_HOSTILE_CREEPS);
         let enemyStructures = this.find(FIND_HOSTILE_STRUCTURES);
 
-        let foundsources = this.find(FIND_SOURCES);
+        let sklairs = this.find(FIND_STRUCTURES, {
+            filter: { structureType: STRUCTURE_KEEPER_LAIR }
+        });
 
-        // let sourceids = [];
+        let foundsources = this.find(FIND_SOURCES);
+        let foundmins = this.find(FIND_MINERALS);
+
         if (foundsources.length) {
             Memory.rooms[this.name].sources = {}
             for (let source of foundsources) {
-                // sourceids.push(source.id);
                 Memory.rooms[this.name].sources[source.id] = {}
                 Memory.rooms[this.name].sources[source.id].x = source.pos.x
                 Memory.rooms[this.name].sources[source.id].y = source.pos.y
             }
+        }
+
+        if (foundmins.length) {
+            Memory.rooms[this.name].mineral = {};
+            Memory.rooms[this.name].mineral.type = foundmins[0].mineralType;
+            Memory.rooms[this.name].mineral.x = foundmins[0].pos.x
+            Memory.rooms[this.name].mineral.y = foundmins[0].pos.y
         }
 
         if (this.controller != undefined) {
@@ -45,11 +55,17 @@ Room.prototype.gatherIntel =
             Memory.rooms[this.name].controller.y = this.controller.pos.y
         }
 
+
+
         // Memory.rooms[this.name].name = this.name;
 
-        if (enemies.length > 1) {
-            Memory.rooms[this.name].type = 'enemy';
-            Memory.rooms[this.name].rescout = Game.time + 1500;
+
+        // if (enemies.length > 1) {
+        //     Memory.rooms[this.name].type = 'enemy';
+        //     Memory.rooms[this.name].rescout = Game.time + 1500;
+        if (sklairs.length >= 1) {
+            Memory.rooms[this.name].type = 'sklair';
+            Memory.rooms[this.name].rescout = Infinity;
         } else if (this.controller != undefined && ((this.controller.owner != undefined && !this.controller.my) || (this.controller.reservation != undefined && !this.controller.my))) {
             Memory.rooms[this.name].type = 'enemy';
             Memory.rooms[this.name].rescout = Game.time + 1500;
@@ -69,17 +85,13 @@ Room.prototype.gatherIntel =
 
         this.addExits(homeroomname);
 
-        // for(let roomname in Memory.rooms) {
-        if (this.memory.anchor == undefined /*Memory.rooms[this.name].anchor == undefined*/) {
-            // continue;
+        // if (this.memory.anchor == undefined) {
+        //     this.checker();
+        // } 
+        if (this.memory.type != 'base' && this.memory.type != 'mine') {
             this.checker();
         } 
-        // else if (Memory.rooms[roomname].anchor == false) {
-            
-        // } else {
-
-        // }
-        // }
+        
     }
 
 Room.prototype.addExits =
@@ -91,7 +103,8 @@ Room.prototype.addExits =
         }
 
         for (let exit of exits) {
-            if (!Game.map.isRoomAvailable(exit)) {
+            // if (!Game.map.isRoomAvailable(exit)) {
+            if (Game.map.getRoomStatus(exit)["status"] != "normal") {
                 continue;
             } else if (Memory.rooms[exit] == undefined) {
                 Memory.rooms[exit] = {};
@@ -117,13 +130,30 @@ Room.prototype.checker =
         // console.log('heyo ' + Object.keys(Memory.rooms[roomname].sources).length)
 
         const terrain = Game.map.getRoomTerrain(roomname);
+
+        let plainsCount = 0;
+        let swampCount = 0;
+        let wallCount = 0;
+
+        for (let x = 1; x < 50; x++) {
+            for (let y = 1; y < 50; y++) {
+                switch(terrain.get(x, y)) {
+                    case TERRAIN_MASK_SWAMP:
+                        swampCount++;
+                    case TERRAIN_MASK_WALL:
+                        wallCount++;
+                    case 0:
+                        plainsCount++;
+                }
+            }
+        }
         
         let dist = 8
 
         let list = []
         
-        for (let rootx = dist; rootx <= 49-dist; rootx++) {
-            for (let rooty = dist; rooty <= 49-dist; rooty++) {
+        for (let rootx = dist+1; rootx <= 49-dist-1; rootx++) {
+            for (let rooty = dist+1; rooty <= 49-dist-1; rooty++) {
                 let valid = true;
                 for (let x = -dist; x < dist + 1 && valid; x++) {
                     for (let y = -dist; y < dist + 1 && valid; y++) {
@@ -147,7 +177,7 @@ Room.prototype.checker =
         }
         
         // Memory.temp = list;
-        if (Object.keys(Memory.rooms[roomname].sources).length > 1 && list.length > 0) {
+        if ((swampCount < 500 && swampCount < 0.5 * plainsCount) && Object.keys(Memory.rooms[roomname].sources).length > 1 && list.length > 0) {
             let bestanchor = {score: 0, x: -1, y: -1};
             // let bestscore = 0;
             for (let coord of list) {
@@ -157,7 +187,7 @@ Room.prototype.checker =
 
                 for (let sourceid in Memory.rooms[roomname].sources) {
                     let source = new RoomPosition(Memory.rooms[roomname].sources[sourceid].x, Memory.rooms[roomname].sources[sourceid].y, roomname);
-                    let path = anchor.findPathTo(source, {ignoreRoads: true, ignoreCreeps: true});
+                    let path = anchor.findPathTo(source, {ignoreRoads: true, swampCost: 1.01, ignoreCreeps: true});
                     // let path = PathFinder.search(anchor, source, {range: 1, swampCost: 1.01}); //anchor.findPathTo(source, {ignoreRoads: true, swampCost: 1.01, ignoreCreeps: true});
 
                     score += (100 - path.length);
@@ -165,6 +195,8 @@ Room.prototype.checker =
                 }
 
                 score += (100 - anchor.findPathTo(this.controller, {ignoreRoads: true, ignoreCreeps: true}).length);
+
+                score -= ~~(swampCount/3);
 
                 // console.log('anchor of ' + roomname);
                 // console.log(coord.x + ', ' + coord.y + ': ' + score);
@@ -175,7 +207,9 @@ Room.prototype.checker =
                     // break;
                 }
             }
-            Memory.rooms[roomname].anchor = bestanchor;
+            if (Memory.rooms[roomname].anchor == undefined) {
+                Memory.rooms[roomname].anchor = bestanchor;
+            }
             console.log('bestanchor of ' + roomname);
             console.log(bestanchor['x'] + ', ' + bestanchor['y'] + ': ' + bestanchor['score']);
         } else {
@@ -377,6 +411,8 @@ Room.prototype.getEnergyStructures =
     }
 
 const energyStructureOrder = [
+    {"x": 1, "y": -1},
+
     {"x": 5, "y": 1},
     {"x": 4, "y": 1},
     {"x": 4, "y": 2},
@@ -443,7 +479,6 @@ const energyStructureOrder = [
     {"x": -2, "y": -6},
     {"x": -1, "y": -6},
 
-    {"x": 1, "y": -1},
     {"x": 1, "y": -4},
     {"x": 4, "y": -1},
 ]

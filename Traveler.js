@@ -114,7 +114,7 @@ class Traveler {
         }
         // consume path
         if (state.stuckCount === 0 && !newPath) {
-            travelData.path = travelData.path.substr(1);
+            travelData.path = travelData.path.substring(1);
         }
         let nextDirection = parseInt(travelData.path[0], 10);
         if (options.returnData) {
@@ -406,11 +406,6 @@ class Traveler {
             let matrix = new PathFinder.CostMatrix();
             this.structureMatrixCache[room.name] = Traveler.addStructuresToMatrix(room, matrix, 1);
         }
-
-        if (room.name == 'W5N1' && Memory.temp == undefined) {
-            Memory.temp = this.structureMatrixCache[room.name];
-        }
-
         return this.structureMatrixCache[room.name];
     }
     /**
@@ -576,7 +571,10 @@ Traveler.creepMatrixCache = {};
 exports.Traveler = Traveler;
 // this might be higher than you wish, setting it lower is a great way to diagnose creep behavior issues. When creeps
 // need to repath to often or they aren't finding valid paths, it can sometimes point to problems elsewhere in your code
-const REPORT_CPU_THRESHOLD = 1500;
+
+const REPORT_CPU_THRESHOLD = 1000;
+// const REPORT_CPU_THRESHOLD = 1110;
+
 const DEFAULT_MAXOPS = 20000;
 const DEFAULT_STUCK_VALUE = 2;
 const STATE_PREV_X = 0;

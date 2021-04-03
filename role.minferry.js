@@ -2,6 +2,8 @@ module.exports = {
 
     /** @param {Creep} creep **/
     run: function(creep) {
+        
+
         if(creep.memory.working && creep.store.getUsedCapacity() == creep.store.getCapacity()) {
             creep.memory.working = false;
         } else if (!creep.memory.working && creep.store.getUsedCapacity() == 0) {
@@ -51,6 +53,7 @@ module.exports = {
 
                     if (!creep.pos.inRangeTo(closest, 1)) {
                         creep.travelTo(closest);
+                        creep.memory.target = closest.id;
                     } else {
                         for (const resourceType in closest.store) {
                             if (resourceType != RESOURCE_ENERGY) {
@@ -63,6 +66,7 @@ module.exports = {
 
                     if (!creep.pos.inRangeTo(closest, 1)) {
                         creep.travelTo(closest);
+                        creep.memory.target = closest.id;
                     } else {
                         for (const resourceType in closest.store) {
                             if (resourceType != RESOURCE_ENERGY) {
@@ -79,6 +83,7 @@ module.exports = {
                     
                     if (containers.length > 0) {
                         let closest = creep.pos.findClosestByRange(containers);
+                        creep.memory.target = closest.id;
 
                         if (!creep.pos.inRangeTo(closest, 1)) {
                             creep.travelTo(closest);

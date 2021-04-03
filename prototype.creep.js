@@ -141,9 +141,6 @@ Creep.prototype.fillExtensions =
             // }
         } else {
                 // console.log(this.name + ': travelTo current');
-            
-            this.travelTo(targets[0], {range: 1, maxOps: 100, freshMatrix: false, maxRooms: 1});
-
-            // this.moveTo(targets[0])
+            this.travelTo(targets[0]);
         }
     };

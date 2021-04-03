@@ -21,7 +21,7 @@ module.exports = {
                 creep.depositEnergy();
             } else {
                 if (creep.pos.findInRange(FIND_MY_CREEPS, 1, {filter: s => s.memory.role == 'contharvester'}).length > 0) {
-                    creep.suicide();
+                    creep.memory.role = 'builder';
                 }
                 creep.getEnergy(false, true);
             }

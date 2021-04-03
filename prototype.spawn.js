@@ -2,11 +2,11 @@ StructureSpawn.prototype.spawnController =
     function() {
         let room = this.room;
 
-        let creepsList = _.filter(Game.creeps, c => c.memory.home == room.name);
+        let creepsList = _.filter(Game.creeps, c => c.memory.home == room.name && (c.ticksToLive > c.body.length*3 || c.spawning));
 
         let harvesters = _.filter(creepsList, c => c.memory.role == 'harvester');
         let contharvesters = _.filter(creepsList, c => c.memory.role == 'contharvester');
-        let ferrys = _.filter(creepsList, c => c.memory.role == 'ferry' && (c.spawning || 3*c.body.length < c.ticksToLive));
+        let ferrys = _.filter(creepsList, c => c.memory.role == 'ferry');
         let upgraders = _.filter(creepsList, c => c.memory.role == 'upgrader');
         let builders = _.filter(creepsList, c => c.memory.role == 'builder');
         let emans = _.filter(creepsList, c => c.memory.role == 'eman');
@@ -29,6 +29,12 @@ StructureSpawn.prototype.spawnController =
 
         if (room.memory.expand == undefined) {
             room.memory.expand = '';
+        }
+        if (room.memory.assist == undefined) {
+            room.memory.assist = -1;
+        }
+        if (room.memory.assist > -1) {
+            room.memory.assist--;
         }
         if (room.memory.remotedestroy == undefined) {
             room.memory.remotedestroy = '';
@@ -54,11 +60,11 @@ StructureSpawn.prototype.spawnController =
             name = 'harvester' + Game.time;
             mem['role'] = 'harvester';
             body = this.genWorker();
-        } else if (harvesters.length + contharvesters.length == 0 && room.energyAvailable < 700 && (emans.length < 1 || (room.storage == undefined || room.storage.store[RESOURCE_ENERGY] < 700))) {
+        } else if (harvesters.length + contharvesters.length == 0 && room.energyAvailable < 600 && (emans.length < 1 || (room.storage == undefined || room.storage.store[RESOURCE_ENERGY] < 700))) {
             name = 'harvester' + Game.time;
             mem['role'] = 'harvester';
             body = this.genWorker();
-        } else if(room.energyCapacityAvailable < 700 && harvesters.length < 5) {
+        } else if(room.energyCapacityAvailable < 600 && harvesters.length < 5) {
             name = 'harvester' + Game.time;
             mem['role'] = 'harvester';
             body = this.genWorker();
@@ -70,19 +76,19 @@ StructureSpawn.prototype.spawnController =
             name = 'ferry' + Game.time;
             mem['role'] = 'ferry';
             body = this.genFerry();
-        } else if(ferrys.length < contharvesters.length && room.energyCapacityAvailable < 1500) {
+        } else if(ferrys.length < contharvesters.length && room.energyCapacityAvailable < 1000) {
             name = 'ferry' + Game.time;
             mem['role'] = 'ferry';
             body = this.genFerry();
-        } else if(room.energyCapacityAvailable >= 700 && contharvesters.length < sources.length) {
+        } else if(room.energyCapacityAvailable >= 600 && contharvesters.length < sources.length) {
             name = 'contharvester' + Game.time;
             mem['role'] = 'contharvester';
             
-            if (room.energyAvailable > 800) {
+            if (room.energyAvailable >= 800) {
                 body = [WORK,WORK,WORK,WORK,WORK,WORK,CARRY,MOVE,MOVE,MOVE];
-            } else if (room.energyAvailable > 700) {
+            } else if (room.energyAvailable >= 700) {
                 body = [WORK,WORK,WORK,WORK,WORK,CARRY,MOVE,MOVE,MOVE];
-            } else if (room.energyAvailable > 600) {
+            } else if (room.energyAvailable >= 600) {
                 body = [WORK,WORK,WORK,WORK,WORK,CARRY,MOVE];
             }
 
@@ -95,7 +101,7 @@ StructureSpawn.prototype.spawnController =
         	name = 'middleman' + Game.time;
         	mem['role'] = 'middleman';
         	body = [CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY];
-        } else if(room.controller.level == 8 && upgraders.length < 1) {
+        } else if(upgraders.length < 1 && room.controller.ticksToDowngrade < 0.5 * CONTROLLER_DOWNGRADE[room.controller.level]) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
@@ -103,32 +109,62 @@ StructureSpawn.prototype.spawnController =
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
-        } else if(room.controller.level < 8 && upgraders.length < 2 && csites.length == 0) {
+        } else if(room.controller.level < 8 && upgraders.length < 2 && room.storage != undefined && room.storage.store[RESOURCE_ENERGY] >= 30000 && csites.length == 0) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
-        } else if(csites.length > 0 && room.storage == undefined && builders.length < 3) {
+        } else if(room.controller.level < 8 && upgraders.length < 3 && room.storage != undefined && room.storage.store[RESOURCE_ENERGY] >= 60000 && csites.length == 0) {
+            name = 'upgrader' + Game.time;
+            mem['role'] = 'upgrader';
+            body = this.genWorker();
+        } else if(harvesters.length < 2 && csites.length > 0 && room.storage == undefined && builders.length < 3) {
             name = 'builder' + Game.time;
             mem['role'] = 'builder';
             body = this.genWorker();
-        } else if(csites.length > 0 && builders.length < 1) {
+        } else if(harvesters.length < 2 && csites.length > 0 && builders.length < 1 && room.storage.store[RESOURCE_ENERGY] >= 30000) {
             name = 'builder' + Game.time;
             mem['role'] = 'builder';
             body = this.genWorker();
-        // } else if (scouts.length < 1) {
+        } else if(harvesters.length < 2 && csites.length > 0 && builders.length < 2 && room.storage.store[RESOURCE_ENERGY] >= 60000) {
+            name = 'builder' + Game.time;
+            mem['role'] = 'builder';
+            body = this.genWorker();
         } else if (room.controller.level >= 6 && room.energyAvailable >= 2100 && mins.mineralAmount > 0 && extractor != undefined && mincont != undefined && minharvesters.length < 1) {
             name = 'minharvester' + Game.time;
             mem['role'] = 'minharvester';
             body = this.genMinHarvester();
-        } else if (minferrys.length < minharvesters.length) {
-            name = 'minferry' + Game.time;
-            mem['role'] = 'minferry';
-            body = this.genFerry();
+        // } else if (minferrys.length < minharvesters.length) {
+        //     name = 'minferry' + Game.time;
+        //     mem['role'] = 'minferry';
+        //     body = this.genFerry();
         } else if (scouts.length < 1 && room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_OBSERVER}).length == 0) {
             name = 'scout' + Game.time;
             mem['role'] = 'scout';
             body = [MOVE];
-        } else if (room.memory.expand != undefined && room.memory.expand != "") {
+        } else if ((room.memory.assist == 0 || room.memory.assist == -2) && room.memory.expand != undefined && room.memory.expand != "") {
+            let targ = room.memory.expand;
+
+            let settlers = _.filter(creepsList, c => c.memory.role == 'settler' && c.memory.targetRoom == targ);
+
+            if (Game.rooms[targ].controller.level < 4) {
+                if (settlers.length < 1) {
+                    name = 'settler' + Game.time;
+                    mem['role'] = 'settler';
+                    mem['targetRoom'] = targ
+                    body = this.genWorker();
+                    room.memory.assist = -1;
+                } else if (settlers.length < 2) {
+                    name = 'settler' + Game.time;
+                    mem['role'] = 'settler';
+                    mem['targetRoom'] = targ
+                    body = this.genWorker();
+                    room.memory.assist = 1000;
+                }
+            } else {
+                room.memory.assist = -1;
+                room.memory.expand = "";
+            }
+        } else if (room.memory.assist < 0 && room.memory.expand != undefined && room.memory.expand != "") {
             let targ = room.memory.expand;
 
             let claimers = _.filter(creepsList, c => c.memory.role == 'claimer' && c.memory.targetRoom == targ);
@@ -155,13 +191,13 @@ StructureSpawn.prototype.spawnController =
             body = this.genDestroyer();
 
             room.memory.remotedestroy = "";
-        } else if (room.name == 'W5N1' && Memory.attackrichie != undefined && Memory.attackrichie != false) {
+        } else if (room.name == 'E1N5' && Memory.attackRichie != undefined && Memory.attackRichie != false) {
         	name = 'attacker' + Game.time;
 			mem['role'] = 'attacker';
-            mem['targetRoom'] = 'W4N8';
-            body = [MOVE,MOVE,MOVE,MOVE,MOVE,ATTACK];     
+            mem['targetRoom'] = 'W8S6';
+            body = [ATTACK, MOVE];     
 
-            Memory.attackrichie = false;
+            Memory.attackRichie = false;
         }
 
         // else if(room.memory.claim != undefined && room.memory.claim != "") {
@@ -205,9 +241,6 @@ StructureSpawn.prototype.spawnController =
                 if (mem['role'] == 'middleman') {
                 	dirs = [BOTTOM_LEFT];
                 }
-                // else {
-                	// this.spawnCreep(body, name, {directions: [TOP, TOP_RIGHT, RIGHT], memory: mem, energyStructures: energyOrder})
-                // }
                 this.spawnCreep(body, name, {directions: dirs, memory: mem, energyStructures: energyOrder})
             } else {
                 this.spawnCreep(body, name, {memory: mem, energyStructures: energyOrder})
@@ -219,7 +252,7 @@ StructureSpawn.prototype.genWorker =
     function() {
         let body = [];
 
-        if (this.room.storage != undefined && this.room.storage.store[RESOURCE_ENERGY] > 100000) {
+        if (this.room.storage != undefined && this.room.storage.store[RESOURCE_ENERGY] > 50000) {
             let numberOfParts = Math.floor(this.room.energyAvailable / 200);
             numberOfParts = Math.min(numberOfParts, Math.floor(50 / 3));
             for (let i = 0; i < numberOfParts; i++) {
@@ -243,8 +276,7 @@ StructureSpawn.prototype.genWorker =
 StructureSpawn.prototype.genFerry =
     function() {
         let body = [];
-        let roads = this.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_ROAD})
-        if (roads.length < 72) {
+        if (this.room.controller.level < 4 || this.room.storage == undefined) {
             let numberOfParts = Math.floor(this.room.energyAvailable / 100);
             numberOfParts = Math.min(numberOfParts, Math.floor(50 / 2));
             for (let i = 0; i < numberOfParts; i++) {

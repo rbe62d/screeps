@@ -29,8 +29,7 @@ module.exports = {
                     creep.travelTo(container);
                 }
             }
-        }
-        else {
+        } else {
             let targets = source.pos.findInRange(FIND_CONSTRUCTION_SITES, 1);
             if(targets.length) {
                 if(creep.build(targets[0]) == ERR_NOT_IN_RANGE) {

@@ -13,7 +13,7 @@ StructureTower.prototype.runRole =
 
             let closestDamagedStructure = this.pos.findClosestByRange(FIND_STRUCTURES, {
                 filter: (structure) => structure.hits < structure.hitsMax && structure.structureType != STRUCTURE_WALL && structure.structureType != STRUCTURE_RAMPART
-                // filter: (structure) => structure.hits < structure.hitsMax// && structure.structureType != STRUCTURE_WALL && structure.structureType != STRUCTURE_RAMPART
+                // filter: (structure) => structure.hits < structure.hitsMax && structure.structureType != STRUCTURE_WALL && structure.structureType != STRUCTURE_RAMPART && structure.structureType != STRUCTURE_CONTAINER
             });
             if(closestDamagedStructure != undefined) {
                 this.repair(closestDamagedStructure);

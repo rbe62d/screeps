@@ -39,18 +39,21 @@ module.exports = {
             // delete creep.memory.explore;
             addExits(creep);
         } else {
-            if (!Game.map.isRoomAvailable(creep.memory.explore[0])) { // || (Memory.rooms[creep.memory.explore[0]] != undefined && Memory.rooms[creep.memory.explore[0]]['rescout'] != undefined && Memory.rooms[creep.memory.explore[0]]['rescout'] > Game.time)) {
+            // if (!Game.map.isRoomAvailable(creep.memory.explore[0])) { // || (Memory.rooms[creep.memory.explore[0]] != undefined && Memory.rooms[creep.memory.explore[0]]['rescout'] != undefined && Memory.rooms[creep.memory.explore[0]]['rescout'] > Game.time)) {
+            if (Game.map.getRoomStatus(creep.memory.explore[0])["status"] != "normal") {
                 creep.memory.explore.shift();
             }
 
             if (creep.pos.x == 0 || creep.pos.x == 49 || creep.pos.y == 0 || creep.pos.y == 49) {
-                let err = creep.travelTo(new RoomPosition(25, 25, creep.memory.explore[0]), {ignoreRoads: true, swampCost: 1});
+                let err = creep.travelTo(new RoomPosition(25, 25, creep.memory.explore[0]), {offroad: true, swampCost: 1});
                 if (err == ERR_INVALID_ARGS) {
                     // creep.say('fuck')
                     creep.memory.explore.shift();
                 }
                 // console.log('scout err: ' + err)
-                creep.room.gatherIntel(creep.memory.home);
+                if (creep.room.name != creep.memory.name) {
+                    creep.room.gatherIntel(creep.memory.home);
+                }
 
                 let index = creep.memory.explore.indexOf(creep.room.name);
 
@@ -59,7 +62,7 @@ module.exports = {
                 }
 
             } else if (creep.memory.explore.length > 0 && creep.room.name != creep.memory.explore[0]) {
-                let err = creep.travelTo(new RoomPosition(25, 25, creep.memory.explore[0]), {ignoreRoads: true, swampCost: 1});
+                let err = creep.travelTo(new RoomPosition(25, 25, creep.memory.explore[0]), {offroad: true, swampCost: 1});
 
                 if (err == ERR_INVALID_ARGS) {
                     // creep.say('fuck1')
@@ -73,7 +76,7 @@ module.exports = {
                 //     creep.say('fuck1')
                 // }
             } else {
-                creep.move(new RoomPosition(25, 25, creep.memory.explore[0]), {ignoreRoads: true, swampCost: 1});
+                creep.move(new RoomPosition(25, 25, creep.memory.explore[0]), {offroad: true, swampCost: 1});
                 creep.memory.explore.shift();
 
                 addExits(creep);
@@ -92,7 +95,8 @@ function addExits(creep, force=false) {
     }
 
     for (let exit of exits) {
-        if (!Game.map.isRoomAvailable(exit)) {
+        // if (!Game.map.isRoomAvailable(exit)) {
+        if (Game.map.getRoomStatus(exit)["status"] != "normal") {
             continue;
         }
         if (Game.map.getRoomLinearDistance(creep.memory.home, exit) <= 10) {
