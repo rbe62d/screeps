@@ -27,7 +27,7 @@ module.exports = {
         //     // creep.runOtherRole('renew');
         //     creep.memory.state = 'renew';
         // }
-        
+
 
         let spawns = creep.room.find(FIND_STRUCTURES, {filter: s => s.structureType == STRUCTURE_SPAWN && !s.spawning});
         if (creep.ticksToLive > 1400 || creep.room.energyAvailable < 1000 || spawns.length == 0) {
@@ -81,7 +81,17 @@ module.exports = {
 
             if (room.energyAvailable != room.energyCapacityAvailable) {
                 if (creep.store[RESOURCE_ENERGY] > 0) {
-                    creep.fillExtensions();
+                    let extensions = creep.pos.findInRange(FIND_STRUCTURES, 1);
+                    extensions = _.filter(
+                        extensions, function(s) {
+                           return s.structureType == STRUCTURE_EXTENSION && s.energy != s.energyCapacity;
+                        }
+                    );
+                    if (extensions.length > 0) {
+                        creep.transfer(extensions[0], RESOURCE_ENERGY);
+                    } else {
+                        creep.fillExtensions();
+                    }
                 } else {
                     if (room.terminal != undefined && room.terminal.store[RESOURCE_ENERGY] > room.storage.store[RESOURCE_ENERGY]) {
                         if (creep.withdraw(room.terminal, RESOURCE_ENERGY, Math.min(creep.store.getFreeCapacity(RESOURCE_ENERGY), room.terminal.store[RESOURCE_ENERGY])) == ERR_NOT_IN_RANGE) {

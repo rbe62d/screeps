@@ -7,6 +7,8 @@ StructureSpawn.prototype.spawnController =
         let harvesters = _.filter(creepsList, c => c.memory.role == 'harvester');
         let contharvesters = _.filter(creepsList, c => c.memory.role == 'contharvester');
         let ferrys = _.filter(creepsList, c => c.memory.role == 'ferry');
+        let remoteferrys = _.filter(creepsList, c => c.memory.role == 'remoteferry');
+        let reservers = _.filter(creepsList, c => c.memory.role == 'reserver');
         let upgraders = _.filter(creepsList, c => c.memory.role == 'upgrader');
         let builders = _.filter(creepsList, c => c.memory.role == 'builder');
         let emans = _.filter(creepsList, c => c.memory.role == 'eman');
@@ -27,32 +29,76 @@ StructureSpawn.prototype.spawnController =
             home: room.name
         }
 
-        if (room.memory.expand == undefined) {
-            room.memory.expand = '';
+        if (Memory.bases[room.name].expand == undefined) {
+            Memory.bases[room.name].expand = '';
         }
-        if (room.memory.assist == undefined) {
-            room.memory.assist = -1;
+        if (Memory.bases[room.name].assist == undefined) {
+            Memory.bases[room.name].assist = -1;
         }
-        if (room.memory.assist > -1) {
-            room.memory.assist--;
+        if (Memory.bases[room.name].assist > -1) {
+            Memory.bases[room.name].assist--;
         }
-        if (room.memory.remotedestroy == undefined) {
-            room.memory.remotedestroy = '';
+        if (Memory.bases[room.name].remotedestroy == undefined) {
+            Memory.bases[room.name].remotedestroy = '';
         }
 
         if (room.controller.level >= 3 && remotedestroys.length < 1 && Game.time % 1500 == 0) {
             let abandonedrooms = [];
             for (let ruum in Memory.rooms) {
-                if (room.memory.nearby.indexOf(ruum) >= 0 && Game.map.getRoomLinearDistance(room.name, ruum) <= 2 && Memory.rooms[ruum].type == 'abandoned') {
+                if (Game.map.getRoomLinearDistance(room.name, ruum) <= 2 && Memory.rooms[ruum].type == 'abandoned') {
                     abandonedrooms.push(ruum)
                 }
             }
             if (abandonedrooms.length > 0) {
-               room.memory.remotedestroy = abandonedrooms[0];
+               Memory.bases[room.name].remotedestroy = abandonedrooms[0];
             }
         }
 
-        let sources = room.find(FIND_SOURCES);
+        let needsreserver = [];
+        for (let ruum of Memory.bases[room.name].remotemines) {
+            // if (!(Game.rooms[ruum].controller || !Game.rooms[ruum].controller.my || Game.rooms[ruum].controller.reservation > 200)) {
+            //     if (!_.some(reservers, c => c.memory.targetRoom == ruum)) {
+            //         needsreserver.push(ruum);
+            //     }
+            // }
+            // if (Game.rooms[ruum] && Game.rooms[ruum].controller && (!Game.rooms[ruum].controller.my || (Game.rooms[ruum].controller.my && Game.rooms[ruum].controller.reservation.ticksToEnd < 200))) {
+            //     if (!_.some(reservers, c => c.memory.targetRoom == ruum)) {
+            //         needsreserver.push(ruum);
+            //     }
+            // }
+            if (Game.rooms[ruum] == undefined) {
+                if (!_.some(reservers, c => c.memory.targetRoom == ruum)) {
+                    needsreserver.push(ruum);
+                }
+                // if (room.name == 'E1N5') {
+                //     console.log('1')
+                // }
+            } else if (Game.rooms[ruum].controller == undefined) {
+                if (!_.some(reservers, c => c.memory.targetRoom == ruum)) {
+                    needsreserver.push(ruum);
+                }
+                // if (room.name == 'E1N5') {
+                //     console.log('2')
+                // }
+            } else if (Game.rooms[ruum].controller.reservation == undefined || Game.rooms[ruum].controller.reservation.username != 'HoHqeq') {
+                if (!_.some(reservers, c => c.memory.targetRoom == ruum)) {
+                    needsreserver.push(ruum);
+                }
+                // if (room.name == 'E1N5') {
+                //     console.log('3')
+                // }
+            } else if (Game.rooms[ruum].controller.reservation.username == 'HoHqeq' && Game.rooms[ruum].controller.reservation.ticksToEnd < 200) {
+                if (!_.some(reservers, c => c.memory.targetRoom == ruum)) {
+                    needsreserver.push(ruum);
+                }
+                // if (room.name == 'E1N5') {
+                //     console.log('4')
+                // }
+            }
+        }
+
+        // let sources = room.find(FIND_SOURCES);
+        let sources = Memory.bases[room.name].sources;
 
         if (this.spawning != null) {
             //can't work so don't
@@ -80,7 +126,31 @@ StructureSpawn.prototype.spawnController =
             name = 'ferry' + Game.time;
             mem['role'] = 'ferry';
             body = this.genFerry();
-        } else if(room.energyCapacityAvailable >= 600 && contharvesters.length < sources.length) {
+        } else if(Memory.bases[room.name].remotemines && remoteferrys.length < Memory.bases[room.name].remotemines.length) {
+            name = 'remoteferry' + Game.time;
+            mem['role'] = 'remoteferry';
+            body = this.genFerry();
+            for (let ruum of Memory.bases[room.name].remotemines) {
+                // console.log('charv sourceid ' + sourceid)
+                if (!_.some(remoteferrys, c => c.memory.targetRoom == ruum)) {
+                    mem['targetRoom'] = ruum;
+                }
+            }
+        // } else if(remoteferrys.length < contharvesters.length && room.energyCapacityAvailable < 1000) {
+        //     name = 'ferry' + Game.time;
+        //     mem['role'] = 'ferry';
+        //     body = this.genFerry();
+        } else if (needsreserver.length > 0 && room.energyAvailable > 1950) {
+            name = 'reserver' + Game.time;
+            mem['role'] = 'reserver';
+            mem['targetRoom'] = needsreserver[0];
+            body = [CLAIM, CLAIM, CLAIM, MOVE, MOVE, MOVE];
+        } else if (needsreserver.length > 0 && room.energyAvailable > 1300) {
+            name = 'reserver' + Game.time;
+            mem['role'] = 'reserver';
+            mem['targetRoom'] = needsreserver[0];
+            body = [CLAIM, CLAIM, MOVE, MOVE];
+        } else if(room.energyCapacityAvailable >= 600 && contharvesters.length < Object.keys(sources).length) {
             name = 'contharvester' + Game.time;
             mem['role'] = 'contharvester';
             
@@ -92,9 +162,16 @@ StructureSpawn.prototype.spawnController =
                 body = [WORK,WORK,WORK,WORK,WORK,CARRY,MOVE];
             }
 
-            for (let source of sources) {
-                if (!_.some(creepsList, c => c.memory.role == 'contharvester' && c.memory.sourceID == source.id)) {
-                    mem['sourceID'] = source.id;
+            // for (let source of sources) {
+            //     if (!_.some(creepsList, c => c.memory.role == 'contharvester' && c.memory.sourceID == source.id)) {
+            //         mem['sourceID'] = source.id;
+            //     }
+            // }
+            for (let sourceid in sources) {
+                // console.log('charv sourceid ' + sourceid)
+                if (!_.some(contharvesters, c => c.memory.sourceID == sourceid)) {
+                    mem['sourceID'] = sourceid;
+                    mem['targetRoom'] = sources[sourceid].room;
                 }
             }
         } else if (this.name.substring(0,6).toLowerCase() == 'spawn1' && room.controller.level >= 5 && middlemen.length < 1) {
@@ -109,11 +186,11 @@ StructureSpawn.prototype.spawnController =
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
-        } else if(room.controller.level < 8 && upgraders.length < 2 && room.storage != undefined && room.storage.store[RESOURCE_ENERGY] >= 30000 && csites.length == 0) {
+        } else if(room.controller.level < 8 && upgraders.length < 2 && room.storage != undefined && room.storage.store[RESOURCE_ENERGY] >= 40000 && csites.length == 0) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
-        } else if(room.controller.level < 8 && upgraders.length < 3 && room.storage != undefined && room.storage.store[RESOURCE_ENERGY] >= 60000 && csites.length == 0) {
+        } else if(room.controller.level < 8 && upgraders.length < 3 && room.storage != undefined && room.storage.store[RESOURCE_ENERGY] >= 80000 && csites.length == 0) {
             name = 'upgrader' + Game.time;
             mem['role'] = 'upgrader';
             body = this.genWorker();
@@ -121,11 +198,11 @@ StructureSpawn.prototype.spawnController =
             name = 'builder' + Game.time;
             mem['role'] = 'builder';
             body = this.genWorker();
-        } else if(harvesters.length < 2 && csites.length > 0 && builders.length < 1 && room.storage.store[RESOURCE_ENERGY] >= 30000) {
+        } else if(harvesters.length < 2 && csites.length > 0 && builders.length < 1 && room.storage.store[RESOURCE_ENERGY] >= 40000) {
             name = 'builder' + Game.time;
             mem['role'] = 'builder';
             body = this.genWorker();
-        } else if(harvesters.length < 2 && csites.length > 0 && builders.length < 2 && room.storage.store[RESOURCE_ENERGY] >= 60000) {
+        } else if(harvesters.length < 2 && csites.length > 0 && builders.length < 2 && room.storage.store[RESOURCE_ENERGY] >= 80000) {
             name = 'builder' + Game.time;
             mem['role'] = 'builder';
             body = this.genWorker();
@@ -141,8 +218,8 @@ StructureSpawn.prototype.spawnController =
             name = 'scout' + Game.time;
             mem['role'] = 'scout';
             body = [MOVE];
-        } else if ((room.memory.assist == 0 || room.memory.assist == -2) && room.memory.expand != undefined && room.memory.expand != "") {
-            let targ = room.memory.expand;
+        } else if ((Memory.bases[room.name].assist == 0 || Memory.bases[room.name].assist == -1) && Memory.bases[room.name].expand != undefined && Memory.bases[room.name].expand != "") {
+            let targ = Memory.bases[room.name].expand;
 
             let settlers = _.filter(creepsList, c => c.memory.role == 'settler' && c.memory.targetRoom == targ);
 
@@ -184,13 +261,13 @@ StructureSpawn.prototype.spawnController =
                 // mem['home'] = mem[''];
                 body = this.genWorker();
             }
-        } else if(room.memory.remotedestroy != undefined && room.memory.remotedestroy != "") {
+        } else if(Memory.bases[room.name].remotedestroy != undefined && Memory.bases[room.name].remotedestroy != "") {
             name = 'remotedestroyer' + Game.time;
             mem['role'] = 'remotedestroyer';
-            mem['targetRoom'] = room.memory.remotedestroy
+            mem['targetRoom'] = Memory.bases[room.name].remotedestroy
             body = this.genDestroyer();
 
-            room.memory.remotedestroy = "";
+            Memory.bases[room.name].remotedestroy = "";
         } else if (room.name == 'E1N5' && Memory.attackRichie != undefined && Memory.attackRichie != false) {
         	name = 'attacker' + Game.time;
 			mem['role'] = 'attacker';

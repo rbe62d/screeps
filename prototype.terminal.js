@@ -5,7 +5,7 @@ StructureTerminal.prototype.runRole =
 
             // if (Game.market.credits > 10000) {}
 
-            if (Game.market.credits > 10000 && (this.room.storage == undefined || this.room.storage.store[RESOURCE_ENERGY] < 50000)) {
+            if (Game.market.credits > 5000 && (this.room.storage == undefined || this.room.storage.store[RESOURCE_ENERGY] < 40000)) {
                 // let amt = Math.min(this.store.getFreeCapacity(), , order.remainingAmount)
                 let wantAmt = this.store.getFreeCapacity();
                 if (this.room.storage == undefined) {

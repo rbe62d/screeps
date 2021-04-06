@@ -6,30 +6,29 @@ module.exports = {
     run: function(creep) {
         let homeroom = Game.rooms[creep.memory.home];
 
+        if (creep == undefined) {
+            return;
+        }
+
         // creep.suicide()
+
+        if (creep.ticksToLive == 1500) {
+            addExits(creep);
+        }
 
         if (creep.memory.explore == undefined) {
             creep.memory.explore = [];
-            if (homeroom.memory.nearby != undefined) {
-                for (let ruum of homeroom.memory.nearby) {
-                    if (Memory.rooms[ruum] == undefined || Memory.rooms[ruum].type == undefined) {
-                        creep.memory.explore.unshift(ruum);
-                    } else if (Memory.rooms[ruum].type == 'unexplored') {
-                        creep.memory.explore.unshift(ruum);
-                    } else if (Memory.rooms[ruum].type != 'mine' && Memory.rooms[ruum].type != 'base' && Memory.rooms[ruum].rescout <= Game.time) {
-                        creep.memory.explore.push(ruum);
-                    }
+            for (let roomname of Object.keys(Memory.rooms)) {
+                if (Memory.rooms[roomname] == undefined || Memory.rooms[roomname].type == undefined) {
+                    creep.memory.explore.unshift(roomname);
+                } else if (Memory.rooms[roomname].type == 'unexplored') {
+                    creep.memory.explore.unshift(roomname);
+                } else if (Memory.rooms[roomname].type != 'mine' && Memory.rooms[roomname].type != 'base' && Memory.rooms[roomname].rescout <= Game.time) {
+                    creep.memory.explore.push(roomname);
                 }
-                for (let ruum in Memory.rooms) {
-                    if (homeroom.memory.nearby.indexOf(ruum) < 0 && Game.map.getRoomLinearDistance(homeroom.name, ruum) <= 10) {
-                        creep.memory.explore.unshift(ruum);
-                    }
-                }
-
-                creep.memory.explore = _.shuffle(creep.memory.explore);
-            } else {
-                homeroom.memory.nearby = [];
             }
+
+            creep.memory.explore = _.shuffle(creep.memory.explore);
         }
         // if (creep.memory._move == undefined) {
         //     creep.memory._move = {};
@@ -50,8 +49,8 @@ module.exports = {
                     // creep.say('fuck')
                     creep.memory.explore.shift();
                 }
-                // console.log('scout err: ' + err)
-                if (creep.room.name != creep.memory.name) {
+                
+                if (creep.room.name != creep.memory.home && creep.room.memory.rescout < Game.time) {
                     creep.room.gatherIntel(creep.memory.home);
                 }
 
@@ -100,12 +99,11 @@ function addExits(creep, force=false) {
             continue;
         }
         if (Game.map.getRoomLinearDistance(creep.memory.home, exit) <= 10) {
-            if (homeroom.memory.nearby.indexOf(exit) < 0) {
+            if (force && creep.memory.explore.indexOf(exit) < 0) {
                 creep.memory.explore.unshift(exit);
-                homeroom.memory.nearby.push(exit);
             } else if (Memory.rooms[exit] == undefined || Memory.rooms[exit].type == undefined) {
                 creep.memory.explore.unshift(exit);
-            } else if (Memory.rooms[exit].type != 'mine' && (force || Memory.rooms[exit].type == 'unexplored' || Memory.rooms[exit].rescout <= Game.time) && creep.memory.explore.indexOf(exit) < 0) {
+            } else if (Memory.rooms[exit].type != 'mine' && Memory.rooms[exit].type != 'base' && (Memory.rooms[exit].type == 'unexplored' || Memory.rooms[exit].rescout <= Game.time) && creep.memory.explore.indexOf(exit) < 0) {
                 creep.memory.explore.unshift(exit);
             }
         }

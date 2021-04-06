@@ -2,6 +2,8 @@ var roles = {
     harvester: require('role.harvester'),
     contharvester: require('role.contharvester'),
     ferry: require('role.ferry'),
+    remoteferry: require('role.remoteferry'),
+    reserver: require('role.reserver'),
     upgrader: require('role.upgrader'),
     builder: require('role.builder'),
     claimer: require('role.claimer'),
@@ -21,7 +23,9 @@ Creep.prototype.runRole =
     function() {
         if (!this.spawning) {
             try {
-                if (this.memory.role == undefined) {
+                if (this == undefined) {
+                    this.suicide();
+                } else if (this.memory.role == undefined) {
                     this.suicide()
                 } else {
                     roles[this.memory.role].run(this);
@@ -29,6 +33,9 @@ Creep.prototype.runRole =
             } catch (error) {
                 console.log('creep: ' + this.name + ' (room ' + this.room.name + ') errored ' + error);
                 // console.log('spawning ' + this.spawning)
+                if (error.toString().substring(0,14) == 'ReferenceError') {
+                    this.suicide();
+                }
             }
         }
     };

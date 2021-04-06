@@ -35,7 +35,7 @@ module.exports = {
                 creep.transfer(spawn, RESOURCE_ENERGY);
             }
         } else if (towers.length > 0 && storage && storage.store[RESOURCE_ENERGY] > 10000) {
-            if (creep.store[RESOURCE_ENERGY] < towers[0].store.getFreeCapacity(RESOURCE_ENERGY)) {
+            if (creep.store[RESOURCE_ENERGY] == 0 || creep.store[RESOURCE_ENERGY] < towers[0].store.getFreeCapacity(RESOURCE_ENERGY)) {
                 creep.withdraw(storage, RESOURCE_ENERGY, towers[0].store.getFreeCapacity(RESOURCE_ENERGY));
             } else {
                 creep.transfer(towers[0], RESOURCE_ENERGY);

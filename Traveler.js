@@ -370,7 +370,7 @@ class Traveler {
             },
         });
         if (!_.isArray(ret)) {
-            console.log(`couldn't findRoute to ${destination}`);
+            console.log(`${creep.name} couldn't findRoute from ${origin} to ${destination}`);
             return;
         }
         for (let value of ret) {
@@ -588,3 +588,7 @@ const STATE_DEST_ROOMNAME = 6;
 Creep.prototype.travelTo = function (destination, options) {
     return Traveler.travelTo(this, destination, options);
 };
+
+module.exports.findTPath = function (origin, destination, options) {
+    return Traveler.findTravelPath(origin, destination, options);
+}

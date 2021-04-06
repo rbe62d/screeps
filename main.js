@@ -25,6 +25,24 @@ profiler.wrap(function() {
 
     
 
+    // for (let k in Memory.bases) {
+    //     if (Memory.bases[k].nearby != undefined) {
+    //         delete Memory.bases[k].nearby;
+    //         delete Memory.rooms[k].nearby;
+    //         delete Memory.bases[k].sources;
+    //         delete Memory.bases[k].controller;
+    //         delete Memory.bases[k].type;
+    //         delete Memory.bases[k].rescout;
+    //         delete Memory.bases[k].mineral;
+    //         delete Memory.bases[k].anchor;
+    //     }
+    //     if (Memory.rooms[k].expand != undefined) {
+    //         delete Memory.rooms[k].expand;
+    //         delete Memory.rooms[k].remotedestroy;
+    //         delete Memory.rooms[k].assist;
+    //     }
+    // }
+
     // for (let roomname of Memory.bases) {
     //     let foundmins = Game.rooms[roomname].find(FIND_MINERALS);
     //     if (foundmins.length) {
@@ -36,34 +54,43 @@ profiler.wrap(function() {
     // }
 
 
-    if (Memory.test && Memory.test != '') {
-        const terrain = Game.map.getRoomTerrain(Memory.test);
+    // if (Array.isArray(Memory.bases)) {
+    //     let tmp = Memory.bases;
+    //     Memory.bases = {};
+    //     for (let roomname of tmp) {
+    //         Memory.bases[roomname] = Memory.rooms[roomname];
+    //     }
+    // }
 
-        let plainsCount = 0;
-        let swampCount = 0;
-        let wallCount = 0;
 
-        for (let x = 1; x < 50; x++) {
-            for (let y = 1; y < 50; y++) {
-                switch(terrain.get(x, y)) {
-                    case TERRAIN_MASK_SWAMP:
-                        swampCount++;
-                        break;
-                    case TERRAIN_MASK_WALL:
-                        wallCount++;
-                        break;
-                    case 0:
-                        plainsCount++;
-                        break;
-                }
-            }
-        }
+    // if (Memory.test && Memory.test != '') {
+    //     const terrain = Game.map.getRoomTerrain(Memory.test);
 
-        console.log('plains: ' + plainsCount)
-        console.log('walls: ' + wallCount)
-        console.log('swamps: ' + swampCount)
-        Memory.test = null;
-    }
+    //     let plainsCount = 0;
+    //     let swampCount = 0;
+    //     let wallCount = 0;
+
+    //     for (let x = 1; x < 50; x++) {
+    //         for (let y = 1; y < 50; y++) {
+    //             switch(terrain.get(x, y)) {
+    //                 case TERRAIN_MASK_SWAMP:
+    //                     swampCount++;
+    //                     break;
+    //                 case TERRAIN_MASK_WALL:
+    //                     wallCount++;
+    //                     break;
+    //                 case 0:
+    //                     plainsCount++;
+    //                     break;
+    //             }
+    //         }
+    //     }
+
+    //     console.log('plains: ' + plainsCount)
+    //     console.log('walls: ' + wallCount)
+    //     console.log('swamps: ' + swampCount)
+    //     Memory.test = null;
+    // }
 
 
 
@@ -83,10 +110,7 @@ profiler.wrap(function() {
     }
 
     if (Memory.bases == undefined) {
-        Memory.bases = [];
-    }
-    if (Memory.basesCopy == undefined) {
-        Memory.basesCopy = {};
+        Memory.bases = {};
     }
     if (Memory.expanding == undefined) {
         Memory.expanding = '';
@@ -100,14 +124,12 @@ profiler.wrap(function() {
                 delete Memory.rooms[ruum];
             }
         }
-        for (let roomname of Memory.bases) {
+        for (let roomname in Memory.bases) {
             if (Game.rooms[roomname] == undefined || !Game.rooms[roomname].controller.my) {
-                let index = Memory.bases.indexOf(roomname);
-                Memory.bases.splice(index, 1);
+                // let index = Memory.bases.indexOf(roomname);
+                // Memory.bases.splice(index, 1);
+                delete Memory.bases[roomname];
             }
-        }
-        for (let roomname of Memory.bases) {
-            Memory.basesCopy[roomname] = Memory.rooms[roomname];
         }
     }
 
@@ -135,17 +157,48 @@ profiler.wrap(function() {
         // console.log("remote w7n4")
     }
 
-    for (let roomname in Game.rooms) {
-        if (Game.rooms[roomname].memory.type == 'base') {
-            try {
-                Game.rooms[roomname].buildController();
-            } catch (error) {
-                console.log('Room: ' + roomname + ' build controller errored: ' + error);
+    if (Object.keys(Memory.bases).length == 0 || Game.time%100 == 5) {
+        for (let roomname in Game.rooms) {
+            if (Game.rooms[roomname].memory.type == 'base') {
+                if (Memory.bases[roomname] == undefined) {
+                    Memory.bases[roomname] = {}
+                }
+            }
+        }
+    }
+
+    for (let roomname in Memory.bases) {
+        if (Memory.bases[roomname].sources == undefined || Object.keys(Memory.bases[roomname].sources).length == 0) {
+            Memory.bases[roomname].sources = {};
+            let sourses = Game.rooms[roomname].find(FIND_SOURCES);
+            for (let source of sourses) {
+                Memory.bases[roomname].sources[source.id] = {}
+                Memory.bases[roomname].sources[source.id]['room'] = roomname;
+            }
+        }
+
+        if (Game.time%100 == 7) {
+            if (Game.rooms[roomname].controller.level >= 4 && Memory.bases[roomname].remotemines == undefined) {
+                Memory.bases[roomname].remotemines = [];
             }
 
-            if (Memory.bases.indexOf(roomname) < 0) {
-                Memory.bases.push(roomname);
+            if (Game.rooms[roomname].controller.level >= 4 && Memory.bases[roomname].remotemines.length < 1) {
+                Game.rooms[roomname].addRemote(roomname);
+            } else if (Game.rooms[roomname].controller.level >= 6 && Memory.bases[roomname].remotemines.length < 2) {
+                Game.rooms[roomname].addRemote(roomname);
+            } else if (Game.rooms[roomname].controller.level >= 7 && Memory.bases[roomname].remotemines.length < 3) {
+                Game.rooms[roomname].addRemote(roomname);
+            } else if (Game.rooms[roomname].controller.level >= 8 && Memory.bases[roomname].remotemines.length < 4) {
+                Game.rooms[roomname].addRemote(roomname);
             }
+
+            // Memory.tmp = require('Traveler').findTPath((new RoomPosition(33, 21, 'E1N5')), (new RoomPosition(2, 22, 'E2N5')))
+        }
+
+        try {
+            Game.rooms[roomname].buildController();
+        } catch (error) {
+            console.log('Room: ' + roomname + ' build controller errored: ' + error);
         }
     }
 
@@ -153,7 +206,13 @@ profiler.wrap(function() {
         try {
             let spawn = Game.spawns[spawnName];
             if (!spawn.spawning) {
-                spawn.spawnController();
+                if (spawnName.substring(0,6).toLowerCase() == 'spawn1' && Game.time%3 == 0) {
+                    spawn.spawnController();
+                } else if (spawnName.substring(0,6).toLowerCase() == 'spawn2' && Game.time%3 == 1) {
+                    spawn.spawnController();
+                } else if (spawnName.substring(0,6).toLowerCase() == 'spawn3' && Game.time%3 == 2) {
+                    spawn.spawnController();
+                }
             }
         } catch (error) {
             console.log('Spawn: ' + spawnName + ' spawn controller errored: ' + error);
@@ -161,24 +220,18 @@ profiler.wrap(function() {
         
         let roomname = Game.spawns[spawnName].room.name;
 
-        if (Game.rooms[roomname].memory.nearby == undefined) {
-            Game.rooms[roomname].memory.nearby = [];
-            // Game.rooms[roomname].gatherIntel(roomname);
-        }
-
         let name = spawnName.substring(0,6).toLowerCase();
         if (name == 'spawn1') {
-            if (Game.rooms[roomname].memory.nearby.indexOf(roomname) < 0 || Memory.rooms[roomname] == undefined) {
+            if (Memory.rooms[roomname] == undefined) {
                 try {
-                    Game.rooms[roomname].gatherIntel(roomname);
+                    Game.rooms[roomname].gatherIntel();
                 } catch (error) {
                     console.log('Spawn: ' + spawnName + ' gather intel errored: ' + error);
                 }
             }
 
             if (Game.time % 10 == 0) {
-                // delete Game.rooms[roomname].memory.nearby
-                // delete Memory.rooms
+
             }
         }
 
@@ -234,7 +287,7 @@ profiler.wrap(function() {
         Game.creeps[name].runRole();
     }
 
-    if (!haltexpand && Memory.bases.length < Game.gcl.level && t%500 == 1 && Memory.expanding == '') {
+    if (!haltexpand && Object.keys(Memory.bases).length < Game.gcl.level && t%500 == 1 && Memory.expanding == '') {
 
         let bestscore = 0;
         let bestroom = '';
@@ -243,7 +296,7 @@ profiler.wrap(function() {
             if (Memory.rooms[roomname].mineral.type == 'O' || Memory.rooms[roomname].mineral.type == 'H') {
                 bonus = 400;
             }
-            for (let rum of Memory.bases) {
+            for (let rum in Memory.bases) {
                 if (Memory.rooms[roomname].mineral == undefined) {
                     bonus = 0;
                     break;
@@ -254,8 +307,8 @@ profiler.wrap(function() {
             }
 
             if (Memory.rooms[roomname].type == 'explored' && Memory.rooms[roomname].anchor != false) {
-                let canExpand = _.filter(Memory.bases, function(s) {
-                    return Game.rooms[s].controller.level >= 5 && Memory.rooms[s].expand == '';
+                let canExpand = _.filter(Memory.bases, function(k, v) {
+                    return Game.rooms[k].controller.level >= 5 && (Memory.bases[k].expand == undefined || Memory.bases[k].expand == '');
                 })
                 for (let th of canExpand) {
                     const route = Game.map.findRoute(th, roomname, {
@@ -279,9 +332,9 @@ profiler.wrap(function() {
         Memory.expanding = bestroom;
     }
 
-    if (Memory.expanding != '' && Memory.expanding != 'taken') {
-        let canExpand = _.filter(Memory.bases, function(s) {
-            return Game.rooms[s].controller.level >= 5 && Memory.rooms[s].expand == '';
+    if (!haltexpand && Memory.expanding != '' && Memory.expanding != 'taken') {
+        let canExpand = _.filter(Memory.bases, function(k, v) {
+            return Game.rooms[k].controller.level >= 5 && (Memory.bases[k].expand == undefined || Memory.bases[k].expand == '');
         })
         let bestscore = 100;
         let bestroom = '';
@@ -302,7 +355,7 @@ profiler.wrap(function() {
         }
 
         if (bestroom != '') {
-            Memory.rooms[bestroom].expand = Memory.expanding;
+            Memory.bases[bestroom].expand = Memory.expanding;
             Memory.expanding = 'taken';
         }
     }

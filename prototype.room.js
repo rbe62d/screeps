@@ -1,26 +1,10 @@
 Room.prototype.gatherIntel =
-    function(homeroomname = '') {
+    function() {
         if (Memory.rooms == undefined) {
             Memory.rooms = {}
         }
         if (Memory.rooms[this.name] == undefined) {
             Memory.rooms[this.name] = {};
-        }
-
-        let homeroom;
-        if (homeroomname !== '') {
-            homeroom = Game.rooms[homeroomname];
-            // console.log("gather here");
-            if (homeroom.memory.nearby == undefined) {
-                // console.log("gather here 1");
-                homeroom.memory.nearby = [];
-            }
-            // console.log(homeroom.memory.nearby)
-
-            if (Game.map.getRoomLinearDistance(homeroomname, this.name) <= 10 && homeroom.memory.nearby.indexOf(this.name) < 0) {
-                homeroom.memory.nearby.push(this.name);
-            }
-            // console.log("lel " + homeroom.memory.nearby)
         }
 
         let enemies = this.find(FIND_HOSTILE_CREEPS);
@@ -80,22 +64,24 @@ Room.prototype.gatherIntel =
             Memory.rooms[this.name].rescout = Infinity;
         } else {
             Memory.rooms[this.name].type = 'explored';
-            Memory.rooms[this.name].rescout = Game.time + 300;
+            Memory.rooms[this.name].rescout = Game.time + 1000;
         }
 
-        this.addExits(homeroomname);
+        this.addExits();
 
         // if (this.memory.anchor == undefined) {
         //     this.checker();
         // } 
-        if (this.memory.type != 'base' && this.memory.type != 'mine') {
+        if (this.memory.anchor == undefined && (this.memory.type != 'base' && this.memory.type != 'mine')) {
             this.checker();
-        } 
+        } else if (this.memory.type == 'base' && this.memory.anchor == undefined) {
+
+        }
         
     }
 
 Room.prototype.addExits =
-    function(homeroomname) {
+    function() {
         let exits = []; 
         let squares = Game.map.describeExits(this.name);
         for (let tile in squares) {
@@ -111,11 +97,38 @@ Room.prototype.addExits =
                 Memory.rooms[exit].type = 'unexplored';
 
             }
-            if (homeroomname !== '') {
-                let homeroom = Game.rooms[homeroomname];
-                // console.log(homeroomname + ' ' + this.name);
-                if (Game.map.getRoomLinearDistance(homeroomname, exit) <= 10 && homeroom.memory.nearby.indexOf(exit) < 0) {//!(exit in homeroom.memory.nearby)) {
-                    homeroom.memory.nearby.push(exit);
+        }
+    }
+
+Room.prototype.addRemote = 
+    function(roomname) {
+        let ortho = Game.map.describeExits(roomname);
+
+        let orthogonal = [];
+        for (let x in ortho) {
+            orthogonal.push(ortho[x]);
+        }
+
+        let great = _.filter(orthogonal, function(r) {return Memory.rooms[r].sources && Object.keys(Memory.rooms[r].sources).length > 1 && Memory.rooms[r].type == 'explored'});
+
+        if (great.length > 0) {
+            Memory.bases[roomname].remotemines.push(great[0]);
+            Memory.rooms[great[0]].type = 'mine';
+
+            for (let sourceid in Memory.rooms[great[0]].sources) {
+                Memory.bases[roomname].sources[sourceid] = {room: great[0]};
+            }
+        } else {
+            // console.log('set ok')
+            let ok = _.filter(orthogonal, function(r) {return Memory.rooms[r].sources && Object.keys(Memory.rooms[r].sources).length > 0 && Memory.rooms[r].type == 'explored'});
+
+            // Memory.tmp = orthogonal;
+            if (ok.length > 0) {
+                Memory.bases[roomname].remotemines.push(ok[0]);
+                Memory.rooms[ok[0]].type = 'mine';
+
+                for (let sourceid in Memory.rooms[ok[0]].sources) {
+                    Memory.bases[roomname].sources[sourceid] = {room: ok[0]};
                 }
             }
         }
@@ -125,7 +138,7 @@ Room.prototype.addExits =
 Room.prototype.checker =
     function() {
     let roomname = this.name;
-    if (this.controller != undefined) {
+    if (this.controller != undefined && Object.keys(Memory.rooms[roomname].sources).length >= 2) {
          //temproomname.toUpperCase();
         // console.log('heyo ' + Object.keys(Memory.rooms[roomname].sources).length)
 
@@ -198,8 +211,8 @@ Room.prototype.checker =
 
                 score -= ~~(swampCount/3);
 
-                // console.log('anchor of ' + roomname);
-                // console.log(coord.x + ', ' + coord.y + ': ' + score);
+                console.log('anchor of ' + roomname);
+                console.log(coord.x + ', ' + coord.y + ': ' + score);
                 if (score > bestanchor['score']) {
                     bestanchor['score'] = score;
                     bestanchor['x'] = coord.x;
@@ -210,8 +223,8 @@ Room.prototype.checker =
             if (Memory.rooms[roomname].anchor == undefined) {
                 Memory.rooms[roomname].anchor = bestanchor;
             }
-            console.log('bestanchor of ' + roomname);
-            console.log(bestanchor['x'] + ', ' + bestanchor['y'] + ': ' + bestanchor['score']);
+            // console.log('bestanchor of ' + roomname);
+            // console.log(bestanchor['x'] + ', ' + bestanchor['y'] + ': ' + bestanchor['score']);
         } else {
             // console.log('setting ' + roomname + ' false ');
             // console.log(this.controller);
@@ -245,7 +258,7 @@ Room.prototype.buildController =
         }
         let rootx = this.memory.anchor.x;
         let rooty = this.memory.anchor.y;
-        if(Game.time%100 == 0 || force) {
+        if(Game.time%100 == 17 || force) {
             let level = this.controller.level;
 
             let roadAnchors = []

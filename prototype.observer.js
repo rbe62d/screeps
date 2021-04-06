@@ -2,19 +2,18 @@
 
 StructureObserver.prototype.collect = 
     function() {
-        // let homeroom = Game.rooms[observing];
         let homeroom = this.room;
-        let observing = homeroom.memory.observing.shift();
+        let observing = Memory.bases[homeroom.name].observing.shift();
         let obsRoom = Game.rooms[observing];
 
         if (obsRoom != undefined) {
             obsRoom.gatherIntel(homeroom.name);
 
-            if (homeroom.memory.observing.length > 0) {
-                this.observeRoom(homeroom.memory.observing[0]);
+            if (Memory.bases[homeroom.name].observing.length > 0) {
+                this.observeRoom(Memory.bases[homeroom.name].observing[0]);
             }
         } else {
-            homeroom.memory.observing.unshift(observing);
+            Memory.bases[homeroom.name].observing.unshift(observing);
             this.observeRoom(observing);
         }
     }
@@ -22,34 +21,25 @@ StructureObserver.prototype.collect =
 StructureObserver.prototype.makeList =
     function() {
         let homeroom = this.room;
-        homeroom.memory.observing = [];
-        // console.log('hom')
-        // console.log(homeroom.memory.observing.length)
+        Memory.bases[homeroom.name].observing = [];
 
-        if (homeroom.memory.nearby != undefined) {
-            for (let ruum of homeroom.memory.nearby) {
-                // console.log(ruum)
-                if (Memory.rooms[ruum] != undefined && Memory.rooms[ruum].type == 'unexplored') {
-                    homeroom.memory.observing.unshift(ruum);
-                } else if (Memory.rooms[ruum] != undefined && Memory.rooms[ruum].type != 'mine' && Memory.rooms[ruum].rescout <= Game.time) {
-                    homeroom.memory.observing.push(ruum);
+
+        for (let roomname of Memory.rooms) {
+            if (Game.map.getRoomLinearDistance(homeroom.name, ruum) <= 10) {
+                if (Memory.rooms[roomname].type == 'unexplored') {
+                    Memory.bases[homeroom.name].observing.unshift(roomname);
+                } else if (Memory.rooms[roomname].type != 'base' && Memory.rooms[roomname].rescout <= Game.time) {
+                    Memory.bases[homeroom.name].observing.push(roomname);
                 }
             }
-            for (let ruum in Memory.rooms) {
-                if (homeroom.memory.nearby.indexOf(ruum) < 0 && Game.map.getRoomLinearDistance(homeroom.name, ruum) <= 10) {
-                    homeroom.memory.observing.unshift(ruum);
-                }
-            }
-        } else {
-            homeroom.memory.nearby = []
         }
 
-        if (homeroom.memory.observing.length == 1 && homeroom.memory.observing[0] == null) {
-            homeroom.memory.observing = []
+        if (Memory.bases[homeroom.name].observing.length == 1 && Memory.bases[homeroom.name].observing[0] == null) {
+            Memory.bases[homeroom.name].observing = []
         }        
 
-        if (homeroom.memory.observing.length > 0) {
-            this.observeRoom(homeroom.memory.observing[0]);
+        if (Memory.bases[homeroom.name].observing.length > 0) {
+            this.observeRoom(Memory.bases[homeroom.name].observing[0]);
         }
     }
 
@@ -58,10 +48,8 @@ StructureObserver.prototype.runRole =
         if (this.room.memory.observing == undefined || this.room.memory.observing == null) {
             this.room.memory.observing = [];
         }
-        // console.log(this.room.memory.observing)
         if (this.room.memory.observing.length == 0 && Game.time%10 == 0) {
             this.makeList();
-            // console.log('checked list: ' + this.room.memory.observing.length + ' found');
         } else if (this.room.memory.observing.length > 0) {
             this.collect();
         }

@@ -15,9 +15,7 @@ module.exports = {
             let target = creep.pos.findClosestByPath(FIND_HOSTILE_STRUCTURES);
             // console.log(target)
             if (target == undefined) {
-                // Game.rooms[creep.memory.home].memory.nearby[creep.memory.targetRoom].type = 'unexplored';
-                // Memory.room[creep.memory.targetRoom].type = 'unexplored';
-                creep.room.gatherIntel(creep.memory.home)
+                creep.room.gatherIntel()
                 creep.suicide();
             } else if (creep.dismantle(target) == ERR_NOT_IN_RANGE) {
                 creep.travelTo(target);

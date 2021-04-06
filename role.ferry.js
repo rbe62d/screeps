@@ -13,6 +13,10 @@ module.exports = {
         // if (creep.pos.inRangeTo(store, 1)) {
         //     creep.memory.target = '';
         // }
+        let tarjet = Game.getObjectById(creep.memory.target);
+        if (tarjet == undefined) {
+            creep.memory.target = '';
+        }
 
         if(creep.memory.working && creep.store[RESOURCE_ENERGY] == creep.store.getCapacity()) {
             creep.memory.working = false;
